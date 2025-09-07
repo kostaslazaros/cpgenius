@@ -1,0 +1,991 @@
+const URL_BASE = '/fs'
+const URL_EXISTS = `${URL_BASE}/exists`
+const URL_UPLOAD = `${URL_BASE}/upload`
+const URL_RESULTS = `${URL_BASE}/results`
+const URL_ALGORITHMS = `${URL_BASE}/algorithms`
+const URL_VALUES = `${URL_BASE}/prognosis-values`
+const URL_STATUS = `${URL_BASE}/status`
+const URL_RUN = `${URL_BASE}/run-algorithm`
+const URL_DELETE = `${URL_BASE}/remove`
+const URL_DOWNLOAD = `${URL_BASE}/download/`
+const fileInput = document.getElementById('fileInput')
+const sha1Out = document.getElementById('sha1Out')
+const goBtn = document.getElementById('goBtn')
+const spinner = document.getElementById('spinner')
+const statusBox = document.getElementById('status')
+const resetBtn = document.getElementById('resetBtn')
+const testDataBtn = document.getElementById('testDataBtn')
+
+function setStatus(type, msg) {
+  statusBox.className = 'rounded-2xl border px-4 py-3 text-sm sm:text-base font-medium backdrop-blur'
+  const cls =
+    type === 'ok'
+      ? [
+          'border-emerald-400/40',
+          'text-emerald-200',
+          'bg-gradient-to-r',
+          'from-emerald-500/10',
+          'to-teal-500/10',
+          'ring-1',
+          'ring-emerald-400/20',
+          'shadow-[0_0_25px_rgba(16,185,129,0.25)]',
+        ]
+      : type === 'warn'
+      ? [
+          'border-amber-400/40',
+          'text-amber-200',
+          'bg-gradient-to-r',
+          'from-amber-500/10',
+          'to-orange-500/10',
+          'ring-1',
+          'ring-amber-400/20',
+          'shadow-[0_0_25px_rgba(245,158,11,0.25)]',
+        ]
+      : [
+          'border-rose-400/40',
+          'text-rose-200',
+          'bg-gradient-to-r',
+          'from-rose-500/10',
+          'to-fuchsia-500/10',
+          'ring-1',
+          'ring-rose-400/20',
+          'shadow-[0_0_25px_rgba(244,63,94,0.25)]',
+        ]
+  statusBox.classList.add(...cls)
+  statusBox.textContent = msg
+  statusBox.classList.remove('hidden')
+}
+
+function clearStatus() {
+  statusBox.classList.add('hidden')
+  statusBox.textContent = ''
+  statusBox.className = 'hidden rounded-2xl border px-4 py-3 text-sm sm:text-base font-medium'
+}
+
+function disableUI(disabled) {
+  goBtn.disabled = disabled
+  spinner.classList.toggle('hidden', !disabled)
+}
+
+function toHex(buffer) {
+  const bytes = new Uint8Array(buffer)
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+  return hex
+}
+
+// --- SHA-1 polyfill (Uint8Array -> hex) ---
+function sha1Polyfill(bytes) {
+  function rotl(n, s) {
+    return (n << s) | (n >>> (32 - s))
+  }
+  const ml = bytes.length
+  const withOne = new Uint8Array(ml + 1)
+  withOne.set(bytes)
+  withOne[ml] = 0x80
+  let l = withOne.length
+  let k = (56 - (l % 64) + 64) % 64
+  const padded = new Uint8Array(l + k + 8)
+  padded.set(withOne)
+  const bitLenHi = Math.floor((ml >>> 29) >>> 0)
+  const bitLenLo = (ml << 3) >>> 0
+  const dv = new DataView(padded.buffer)
+  dv.setUint32(padded.length - 8, bitLenHi)
+  dv.setUint32(padded.length - 4, bitLenLo)
+
+  let h0 = 0x67452301,
+    h1 = 0xefcdab89,
+    h2 = 0x98badcfe,
+    h3 = 0x10325476,
+    h4 = 0xc3d2e1f0
+  const w = new Uint32Array(80)
+
+  for (let i = 0; i < padded.length; i += 64) {
+    for (let j = 0; j < 16; j++) {
+      const off = i + j * 4
+      w[j] = (padded[off] << 24) | (padded[off + 1] << 16) | (padded[off + 2] << 8) | padded[off + 3]
+    }
+    for (let j = 16; j < 80; j++) {
+      w[j] = rotl(w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16], 1) >>> 0
+    }
+    let a = h0,
+      b = h1,
+      c = h2,
+      d = h3,
+      e = h4
+    for (let j = 0; j < 80; j++) {
+      let f, kconst
+      if (j < 20) {
+        f = (b & c) | (~b & d)
+        kconst = 0x5a827999
+      } else if (j < 40) {
+        f = b ^ c ^ d
+        kconst = 0x6ed9eba1
+      } else if (j < 60) {
+        f = (b & c) | (b & d) | (c & d)
+        kconst = 0x8f1bbcdc
+      } else {
+        f = b ^ c ^ d
+        kconst = 0xca62c1d6
+      }
+      const temp = (rotl(a, 5) + f + e + kconst + w[j]) >>> 0
+      e = d
+      d = c
+      c = rotl(b, 30) >>> 0
+      b = a
+      a = temp
+    }
+    h0 = (h0 + a) >>> 0
+    h1 = (h1 + b) >>> 0
+    h2 = (h2 + c) >>> 0
+    h3 = (h3 + d) >>> 0
+    h4 = (h4 + e) >>> 0
+  }
+  const out = new Uint8Array(20)
+  const dvOut = new DataView(out.buffer)
+  dvOut.setUint32(0, h0)
+  dvOut.setUint32(4, h1)
+  dvOut.setUint32(8, h2)
+  dvOut.setUint32(12, h3)
+  dvOut.setUint32(16, h4)
+  return Array.from(out)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function computeSHA1(bytes) {
+  try {
+    const subtle = (window.crypto && window.crypto.subtle) || (window.msCrypto && window.msCrypto.subtle)
+    if (subtle && typeof subtle.digest === 'function') {
+      const digest = await subtle.digest('SHA-1', bytes)
+      return toHex(digest)
+    }
+  } catch (e) {
+    /* fallback below */
+  }
+  return sha1Polyfill(new Uint8Array(bytes))
+}
+
+async function sha1File(file) {
+  const buf = await file.arrayBuffer()
+  return computeSHA1(buf)
+}
+
+// --- CSV validation: only .csv; last header must be Prognosis ---
+function isCsvFile(file) {
+  const byExt = /\.csv$/i.test(file.name || '')
+  const byType = (file.type || '').includes('csv')
+  return byExt || byType
+}
+
+function splitCsvLine(line) {
+  // Split a single CSV line into fields, honoring quotes and doubled quotes
+  const out = []
+  let cur = ''
+  let i = 0,
+    inQuotes = false
+
+  // For very large lines, show progress
+  const isLargeLine = line.length > 100000
+  if (isLargeLine) {
+    console.log(`Processing large CSV header line: ${line.length} characters`)
+  }
+
+  while (i < line.length) {
+    const ch = line[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"'
+          i++
+        } else {
+          inQuotes = false
+        }
+      } else {
+        cur += ch
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true
+      } else if (ch === ',') {
+        out.push(cur.trim())
+        cur = ''
+      } else {
+        cur += ch
+      }
+    }
+    i++
+
+    // Show progress for very large lines
+    if (isLargeLine && i % 100000 === 0) {
+      console.log(`CSV parsing progress: ${i}/${line.length} characters, ${out.length} columns found`)
+    }
+  }
+  out.push(cur.trim())
+
+  if (isLargeLine) {
+    console.log(`CSV parsing complete: ${out.length} columns found`)
+  }
+
+  return out
+}
+
+async function validateCsv(file) {
+  if (!isCsvFile(file)) {
+    throw new Error('Please select a .csv file.')
+  }
+
+  // For very large files with many columns, we need to read more than 256KB
+  // Start with 1MB, but expand if needed to capture the full header line
+  let readSize = 1024 * 1024 // 1MB
+  let headerLine = ''
+  let attempts = 0
+  const maxAttempts = 10 // Prevent infinite loop
+
+  while (attempts < maxAttempts) {
+    const headChunk = await file.slice(0, readSize).text()
+    const nlIdx = headChunk.indexOf('\n')
+
+    if (nlIdx !== -1) {
+      // Found newline, we have the complete header
+      headerLine = headChunk.slice(0, nlIdx)
+      break
+    } else if (readSize >= file.size) {
+      // We've read the entire file and there's no newline
+      headerLine = headChunk
+      break
+    } else {
+      // No newline found, double the read size and try again
+      readSize = Math.min(readSize * 2, file.size)
+      attempts++
+    }
+  }
+
+  if (attempts >= maxAttempts && headerLine === '') {
+    throw new Error('Could not find header line in CSV file - file may be too large or malformed.')
+  }
+
+  // Clean up the header line
+  headerLine = headerLine.replace(/\r$/, '').replace(/^\uFEFF/, '')
+  const headers = splitCsvLine(headerLine)
+
+  if (!headers.length) {
+    throw new Error('CSV appears empty or header missing.')
+  }
+
+  const last = headers[headers.length - 1]
+  if (last !== 'Prognosis') {
+    throw new Error(
+      `CSV validation failed: last column is "${last || '(empty)'}" but must be "Prognosis". Found ${
+        headers.length
+      } columns total.`
+    )
+  }
+
+  return true
+}
+
+async function checkExists(id) {
+  const url = `${URL_EXISTS}/${encodeURIComponent(id)}`
+  const r = await fetch(url, { method: 'GET' })
+  if (!r.ok) throw new Error(`Exists check failed (${r.status})`)
+  let data
+  try {
+    data = await r.json()
+    console.log(data)
+  } catch {
+    throw new Error('Invalid JSON from /featuren/exists')
+  }
+  if (!('exists' in data)) throw new Error('Missing "exists" in response')
+  return data
+}
+
+async function uploadFile(file, id) {
+  const form = new FormData()
+  form.append('file', file, file.name)
+  form.append('id', id)
+  const r = await fetch(URL_UPLOAD, { method: 'POST', body: form })
+  console.log(r)
+  if (!r.ok) {
+    const text = await r.text().catch(() => '')
+    throw new Error(`Upload failed (${r.status}) ${text}`)
+  }
+  try {
+    return await r.json()
+  } catch {
+    return { ok: true }
+  }
+}
+
+// Validate on selection for immediate feedback
+fileInput.addEventListener('change', async () => {
+  clearStatus()
+
+  // Reset the entire interface when a new file is selected
+  sha1Out.value = ''
+  hideAnalysisSection()
+  clearAnalysisStatus()
+
+  const file = fileInput.files?.[0]
+  if (!file) {
+    // If no file selected, just return after reset
+    return
+  }
+
+  // Show processing status for large files
+  if (file.size > 10 * 1024 * 1024) {
+    // > 10MB
+    setStatus('warn', 'Processing large CSV file...')
+  }
+
+  try {
+    await validateCsv(file)
+
+    // Give more detailed feedback
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
+    const message =
+      file.size > 10 * 1024 * 1024
+        ? `Large CSV validated successfully (${fileSizeMB}MB): last column is "Prognosis".`
+        : 'CSV looks good: last column is "Prognosis".'
+    setStatus('ok', message)
+  } catch (e) {
+    setStatus('err', e.message || 'Invalid CSV.')
+    fileInput.value = ''
+  }
+})
+
+goBtn.addEventListener('click', async () => {
+  clearStatus()
+  const file = fileInput.files?.[0]
+  if (!file) {
+    setStatus('err', 'Please choose a .csv file first.')
+    return
+  }
+  disableUI(true)
+  try {
+    // Validate CSV header before any hashing/network
+    await validateCsv(file)
+
+    setStatus('warn', 'Computing SHA‑1 locally…')
+    const id = await sha1File(file)
+    sha1Out.value = id
+
+    setStatus('warn', `Checking existence for id ${id.slice(0, 8)}…`)
+    const exists_data = await checkExists(id)
+
+    if (!!exists_data.exists) {
+      const tags = exists_data.tags || ['No tags available']
+      setStatus('ok', `File with this SHA‑1 already exists on server. Loading analysis interface...`)
+      // Load the analysis interface for existing file
+      await loadAnalysisInterface(id)
+    } else {
+      setStatus('warn', 'Not found. Uploading…')
+      const upload_return = await uploadFile(file, id)
+      setStatus('ok', `Upload complete. Monitoring analysis progress...`)
+      // Monitor the analysis task and then load interface
+      await monitorAnalysisTask(upload_return.task_id, id)
+    }
+  } catch (e) {
+    console.error(e)
+    setStatus('err', e.message || 'Something went wrong.')
+  } finally {
+    disableUI(false)
+  }
+})
+
+resetBtn.addEventListener('click', () => {
+  fileInput.value = ''
+  sha1Out.value = ''
+  clearStatus()
+  hideAnalysisSection()
+})
+
+// Test button for demonstrating feature selection functionality
+testDataBtn.addEventListener('click', async () => {
+  const testSha1 = '61d6bde6c060c974a32363f980b4f159c31b57d4'
+  sha1Out.value = testSha1
+  setStatus('warn', 'Loading test data...')
+  try {
+    // Load the complete analysis interface with all data
+    await loadAnalysisInterface(testSha1)
+  } catch (error) {
+    setStatus('error', 'Error loading test data: ' + error.message)
+  }
+})
+
+// =============================================================================
+// DYNAMIC ANALYSIS INTERFACE
+// =============================================================================
+
+let currentSha1Hash = null
+let availableAlgorithms = []
+let prognosisValues = []
+let selectedPrognosisValues = []
+let maxFeatures = 1000
+
+// UI Elements for analysis section
+const analysisSection = document.getElementById('analysisSection')
+const availablePrognosisList = document.getElementById('availablePrognosisList')
+const selectedPrognosisList = document.getElementById('selectedPrognosisList')
+const algorithmSelect = document.getElementById('algorithmSelect')
+const featureSlider = document.getElementById('featureSlider')
+const featureCount = document.getElementById('featureCount')
+const maxFeaturesSpan = document.getElementById('maxFeatures')
+const runAnalysisBtn = document.getElementById('runAnalysisBtn')
+const analysisSpinner = document.getElementById('analysisSpinner')
+const analysisStatus = document.getElementById('analysisStatus')
+const resultsSection = document.getElementById('resultsSection')
+const resultsTableBody = document.getElementById('resultsTableBody')
+const resultsCards = document.getElementById('resultsCards')
+const noResults = document.getElementById('noResults')
+const deleteSection = document.getElementById('deleteSection')
+const deleteBtn = document.getElementById('deleteBtn')
+
+function hideAnalysisSection() {
+  analysisSection.classList.add('hidden')
+  currentSha1Hash = null
+  prognosisValues = []
+  selectedPrognosisValues = []
+  hideResultsSection()
+  // hideImagesSection()
+  hideDeleteSection()
+}
+
+function hideResultsSection() {
+  resultsSection.classList.add('hidden')
+  resultsTableBody.innerHTML = ''
+  resultsCards.innerHTML = ''
+}
+
+function hideDeleteSection() {
+  deleteSection.classList.add('hidden')
+}
+
+function showDeleteSection() {
+  deleteSection.classList.remove('hidden')
+}
+
+function showResultsSection() {
+  resultsSection.classList.remove('hidden')
+}
+
+async function loadResults(sha1Hash) {
+  try {
+    const response = await fetch(`${URL_RESULTS}/${sha1Hash}`)
+    if (!response.ok) {
+      if (response.status === 404) {
+        // No results yet, hide the section
+        hideResultsSection()
+        return
+      }
+      throw new Error(`Failed to load results: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (data.results && data.results.length > 0) {
+      renderResultsTable(data.results)
+      showResultsSection()
+    } else {
+      hideResultsSection()
+    }
+  } catch (error) {
+    console.error('Error loading results:', error)
+    hideResultsSection()
+  }
+}
+
+function renderResultsTable(results) {
+  resultsTableBody.innerHTML = ''
+  resultsCards.innerHTML = ''
+  noResults.style.display = 'none'
+
+  // Sort results by filename in ascending order
+  const sortedResults = [...results].sort((a, b) =>
+    a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+  )
+
+  sortedResults.forEach((result) => {
+    const sizeInMB = (result.file_size / (1024 * 1024)).toFixed(2)
+
+    // Get current feature slider value for the lines parameter
+    const linesParam = featureSlider.value
+    const downloadUrl = `${result.download_url}?lines=${linesParam}`
+
+    // Desktop table row
+    const row = document.createElement('tr')
+    row.className = 'border-b border-magenta-700/20 hover:bg-magenta-900/20 transition-colors'
+
+    row.innerHTML = `
+      <td class="py-4 px-4 text-slate-200">${result.filename}</td>
+      <td class="py-4 px-4 text-right text-slate-300">${sizeInMB}</td>
+      <td class="py-4 px-4 text-center">
+        <a href="${downloadUrl}"
+           download="${result.filename}"
+           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-magenta-200 bg-gradient-to-r from-magenta-900/40 to-fuchsia-900/40 hover:from-magenta-800/60 hover:to-fuchsia-800/60 border border-magenta-500/50 hover:border-magenta-400 rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_25px_rgba(236,72,153,0.5)]"
+           title="Download first ${linesParam} lines">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Download (${linesParam} lines)
+        </a>
+      </td>
+    `
+    resultsTableBody.appendChild(row)
+
+    // Mobile card
+    const card = document.createElement('div')
+    card.className =
+      'border border-magenta-600/30 rounded-lg bg-gradient-to-r from-magenta-950/30 to-fuchsia-950/30 p-4 shadow-[0_0_15px_rgba(236,72,153,0.2)]'
+
+    card.innerHTML = `
+      <div class="flex flex-col space-y-3">
+        <div class="flex justify-between items-start">
+          <h4 class="text-magenta-200 font-medium text-sm leading-tight break-all">${result.filename}</h4>
+          <span class="text-slate-400 text-sm ml-2 flex-shrink-0">${sizeInMB} MB</span>
+        </div>
+        <a href="${downloadUrl}"
+           download="${result.filename}"
+           class="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-magenta-200 bg-gradient-to-r from-magenta-900/50 to-fuchsia-900/50 hover:from-magenta-800/70 hover:to-fuchsia-800/70 border border-magenta-500/50 hover:border-magenta-400 rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_25px_rgba(236,72,153,0.5)] active:scale-95"
+           title="Download first ${linesParam} lines">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Download CSV (${linesParam} lines)
+        </a>
+      </div>
+    `
+    resultsCards.appendChild(card)
+  })
+
+  if (results.length === 0) {
+    noResults.style.display = 'block'
+  }
+}
+
+function showAnalysisSection() {
+  analysisSection.classList.remove('hidden')
+}
+
+function setAnalysisStatus(type, msg) {
+  analysisStatus.className = 'rounded-xl border px-4 py-3 text-sm font-medium'
+  const cls =
+    type === 'ok'
+      ? ['border-emerald-400/40', 'text-emerald-200', 'bg-emerald-950/30']
+      : type === 'warn'
+      ? ['border-amber-400/40', 'text-amber-200', 'bg-amber-950/30']
+      : ['border-rose-400/40', 'text-rose-200', 'bg-rose-950/30']
+  analysisStatus.classList.add(...cls)
+  analysisStatus.textContent = msg
+  analysisStatus.classList.remove('hidden')
+}
+
+function clearAnalysisStatus() {
+  analysisStatus.classList.add('hidden')
+  analysisStatus.textContent = ''
+}
+
+async function loadAlgorithms() {
+  try {
+    const response = await fetch(URL_ALGORITHMS)
+    const data = await response.json()
+    availableAlgorithms = data.algorithms
+
+    algorithmSelect.innerHTML = '<option value="">Select an algorithm...</option>'
+    availableAlgorithms.forEach((alg) => {
+      const option = document.createElement('option')
+      option.value = alg.id
+      option.textContent = alg.name
+      algorithmSelect.appendChild(option)
+    })
+  } catch (error) {
+    console.error('Error loading algorithms:', error)
+    algorithmSelect.innerHTML = '<option value="">Error loading algorithms</option>'
+  }
+}
+
+async function loadPrognosisValues(sha1Hash) {
+  try {
+    const response = await fetch(`${URL_VALUES}/${sha1Hash}`)
+    const data = await response.json()
+    prognosisValues = data.unique_values
+
+    // Update max features based on actual total columns (excluding Prognosis column)
+    const totalFeatures = data.total_columns - 1 // -1 for Prognosis column
+    maxFeatures = Math.max(100, totalFeatures) // Ensure minimum of 100
+    featureSlider.max = maxFeatures
+    featureSlider.min = 100
+
+    // Set initial value to half of max features or 500, whichever is smaller
+    const initialValue = Math.min(500, Math.floor(maxFeatures / 2))
+    featureSlider.value = Math.max(100, initialValue) // Ensure it's at least 100
+
+    maxFeaturesSpan.textContent = maxFeatures
+    updateFeatureCount()
+
+    console.log(`Loaded CSV with ${data.total_columns} total columns, setting max features to ${maxFeatures}`)
+
+    renderPrognosisValues()
+    return data
+  } catch (error) {
+    console.error('Error loading prognosis values:', error)
+    throw error
+  }
+}
+
+function renderPrognosisValues() {
+  // Render available values
+  availablePrognosisList.innerHTML = ''
+  prognosisValues.forEach((value) => {
+    if (!selectedPrognosisValues.includes(value)) {
+      const item = createPrognosisItem(value, 'available')
+      availablePrognosisList.appendChild(item)
+    }
+  })
+
+  // Render selected values
+  selectedPrognosisList.innerHTML = ''
+  if (selectedPrognosisValues.length === 0) {
+    selectedPrognosisList.innerHTML =
+      '<div class="text-slate-500 text-center py-8">Drop prognosis values here</div>'
+  } else {
+    selectedPrognosisValues.forEach((value) => {
+      const item = createPrognosisItem(value, 'selected')
+      selectedPrognosisList.appendChild(item)
+    })
+  }
+
+  updateRunButton()
+}
+
+function createPrognosisItem(value, type) {
+  const div = document.createElement('div')
+  div.className = 'prognosis-item'
+  div.textContent = value
+  div.draggable = true
+
+  if (type === 'selected') {
+    div.classList.add('selected')
+  }
+
+  // Drag events
+  div.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('text/plain', value)
+    div.classList.add('dragging')
+  })
+
+  div.addEventListener('dragend', () => {
+    div.classList.remove('dragging')
+  })
+
+  // Click events
+  div.addEventListener('click', () => {
+    if (type === 'available') {
+      addPrognosisValue(value)
+    } else {
+      removePrognosisValue(value)
+    }
+  })
+
+  return div
+}
+
+function addPrognosisValue(value) {
+  if (!selectedPrognosisValues.includes(value)) {
+    selectedPrognosisValues.push(value)
+    renderPrognosisValues()
+  }
+}
+
+function removePrognosisValue(value) {
+  selectedPrognosisValues = selectedPrognosisValues.filter((v) => v !== value)
+  renderPrognosisValues()
+}
+
+function updateRunButton() {
+  const hasMinimumSelection = selectedPrognosisValues.length >= 2 // Require at least 2 values
+  const hasAlgorithm = algorithmSelect.value !== ''
+  const isEnabled = hasMinimumSelection && hasAlgorithm
+
+  runAnalysisBtn.disabled = !isEnabled
+
+  // Update button text based on selection
+  const buttonText = runAnalysisBtn.querySelector('span')
+  if (!hasMinimumSelection && selectedPrognosisValues.length === 1) {
+    buttonText.textContent = 'Select at least 2 prognosis values'
+  } else if (!hasMinimumSelection) {
+    buttonText.textContent = 'Select prognosis values'
+  } else if (!hasAlgorithm) {
+    buttonText.textContent = 'Select an algorithm'
+  } else {
+    buttonText.textContent = 'Run Feature Selection'
+  }
+}
+
+function updateFeatureCount() {
+  featureCount.textContent = featureSlider.value
+  // Update download links when slider changes
+  updateDownloadLinks()
+}
+
+function updateDownloadLinks() {
+  // Update all download links with the new lines parameter
+  const linesParam = featureSlider.value
+
+  // Update desktop table download links
+  const tableLinks = document.querySelectorAll(`#resultsTableBody a[href*="${URL_DOWNLOAD}"]`)
+  tableLinks.forEach((link) => {
+    const baseUrl = link.href.split('?')[0] // Remove existing parameters
+    link.href = `${baseUrl}?lines=${linesParam}`
+    link.title = `Download first ${linesParam} lines`
+
+    // Update button text to show lines count
+    const buttonText = link.querySelector('svg').nextSibling
+    if (buttonText && buttonText.nodeType === Node.TEXT_NODE) {
+      link.innerHTML = link.innerHTML
+        .replace(/Download \(\d+ lines\)/, `Download (${linesParam} lines)`)
+        .replace(/Download$/, `Download (${linesParam} lines)`)
+    }
+  })
+
+  // Update mobile card download links
+  const cardLinks = document.querySelectorAll(`#resultsCards a[href*="${URL_DOWNLOAD}"]`)
+  cardLinks.forEach((link) => {
+    const baseUrl = link.href.split('?')[0] // Remove existing parameters
+    link.href = `${baseUrl}?lines=${linesParam}`
+    link.title = `Download first ${linesParam} lines`
+
+    // Update button text to show lines count
+    link.innerHTML = link.innerHTML
+      .replace(/Download CSV \(\d+ lines\)/, `Download CSV (${linesParam} lines)`)
+      .replace(/Download CSV$/, `Download CSV (${linesParam} lines)`)
+  })
+}
+
+// Drag and drop setup
+function setupDragAndDrop() {
+  const containers = [
+    document.getElementById('selectedPrognosisContainer'),
+    document.getElementById('availablePrognosisContainer'),
+  ]
+
+  containers.forEach((container) => {
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      container.classList.add('drag-over')
+    })
+
+    container.addEventListener('dragleave', () => {
+      container.classList.remove('drag-over')
+    })
+
+    container.addEventListener('drop', (e) => {
+      e.preventDefault()
+      container.classList.remove('drag-over')
+
+      const value = e.dataTransfer.getData('text/plain')
+      if (container.id === 'selectedPrognosisContainer') {
+        addPrognosisValue(value)
+      } else {
+        removePrognosisValue(value)
+      }
+    })
+  })
+}
+
+async function monitorAnalysisTask(taskId, sha1Hash) {
+  const maxAttempts = 60 // 5 minutes with 5-second intervals
+  let attempts = 0
+
+  while (attempts < maxAttempts) {
+    try {
+      const response = await fetch(`${URL_STATUS}/${taskId}`)
+      const data = await response.json()
+
+      if (data.status === 'SUCCESS') {
+        setStatus('ok', 'Analysis complete! Loading interface...')
+        await loadAnalysisInterface(sha1Hash)
+        return
+      } else if (data.status === 'FAILURE') {
+        throw new Error(data.error || 'Analysis failed')
+      } else {
+        // Still processing
+        setStatus('warn', `Analyzing CSV file... (${Math.round((attempts / maxAttempts) * 100)}%)`)
+      }
+      setStatus('warn', data.result.status || 'Processing...')
+    } catch (error) {
+      console.error('Error checking task status:', error)
+    }
+
+    attempts++
+    await new Promise((resolve) => setTimeout(resolve, 5000)) // Wait 5 seconds
+  }
+
+  throw new Error('Analysis task timed out')
+}
+
+async function loadAnalysisInterface(sha1Hash) {
+  try {
+    currentSha1Hash = sha1Hash
+
+    // Load algorithms, prognosis values, existing results, and images in parallel
+    await Promise.all([loadAlgorithms(), loadPrognosisValues(sha1Hash), loadResults(sha1Hash)])
+
+    showAnalysisSection()
+    showDeleteSection()
+    setStatus('ok', 'Analysis interface loaded. Configure your feature selection below.')
+  } catch (error) {
+    console.error('Error loading analysis interface:', error)
+    setStatus('err', 'Error loading analysis interface: ' + error.message)
+  }
+}
+
+async function runFeatureSelection() {
+  if (!currentSha1Hash || selectedPrognosisValues.length === 0 || !algorithmSelect.value) {
+    setAnalysisStatus('err', 'Please select prognosis values and an algorithm')
+    return
+  }
+
+  try {
+    runAnalysisBtn.disabled = true
+    analysisSpinner.classList.remove('hidden')
+    clearAnalysisStatus()
+
+    const requestBody = {
+      sha1_hash: currentSha1Hash,
+      selected_prognosis_values: selectedPrognosisValues,
+      algorithm: algorithmSelect.value,
+    }
+
+    setAnalysisStatus('warn', 'Starting feature selection analysis...')
+
+    const response = await fetch(URL_RUN, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Analysis failed: ${error}`)
+    }
+
+    const data = await response.json()
+
+    // Monitor the analysis task
+    await monitorFeatureSelectionTask(data.task_id)
+  } catch (error) {
+    console.error('Error running feature selection:', error)
+    setAnalysisStatus('err', error.message || 'Feature selection failed')
+  } finally {
+    runAnalysisBtn.disabled = false
+    analysisSpinner.classList.add('hidden')
+  }
+}
+
+async function monitorFeatureSelectionTask(taskId) {
+  const maxAttempts = 120 // 10 minutes with 5-second intervals
+  let attempts = 0
+
+  while (attempts < maxAttempts) {
+    try {
+      const response = await fetch(`${URL_STATUS}/${taskId}`)
+      const data = await response.json()
+      setAnalysisStatus('ok', data.status || 'Processing...')
+
+      if (data.status === 'SUCCESS') {
+        setAnalysisStatus('ok', 'Feature selection completed! Results are ready for download.')
+        // Reload results to show the new file
+        await loadResults(currentSha1Hash)
+        return
+      } else if (data.status === 'FAILURE') {
+        throw new Error(data.error || 'Feature selection failed')
+      } else {
+        // Still processing
+        const progress = Math.round((attempts / maxAttempts) * 100)
+        setAnalysisStatus('warn', `Running feature selection... (${progress}%)`)
+      }
+      // console.log(data.result.status)
+      setAnalysisStatus('ok', data.result.status || 'Processing...')
+    } catch (error) {
+      console.error('Error checking task status:', error)
+    }
+
+    attempts++
+    await new Promise((resolve) => setTimeout(resolve, 5000)) // Wait 5 seconds
+  }
+
+  throw new Error('Feature selection task timed out')
+}
+
+async function deleteAnalysis() {
+  if (!currentSha1Hash) {
+    setAnalysisStatus('err', 'No analysis loaded to delete')
+    return
+  }
+
+  // First confirmation
+  const confirmed = confirm(
+    `Are you sure you want to permanently delete this analysis?\n\n` +
+      `This will remove:\n` +
+      `• The original CSV file\n` +
+      `• All analysis results\n` +
+      `• All generated feature selection files\n\n` +
+      `This action cannot be undone!`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  // Second confirmation with typing verification
+  const verification = prompt(
+    `FINAL CONFIRMATION\n\n` + `Type "DELETE" (in capital letters) to permanently remove this analysis:`
+  )
+
+  if (verification !== 'DELETE') {
+    setAnalysisStatus('warn', 'Deletion cancelled - verification failed')
+    return
+  }
+
+  try {
+    deleteBtn.disabled = true
+    setAnalysisStatus('warn', 'Deleting analysis and all files...')
+
+    const response = await fetch(`${URL_DELETE}/${currentSha1Hash}`, {
+      method: 'DELETE',
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Delete failed: ${error}`)
+    }
+
+    const data = await response.json()
+    setAnalysisStatus('ok', 'Analysis deleted successfully!')
+
+    // Reset the interface after successful deletion
+    setTimeout(() => {
+      hideAnalysisSection()
+      fileInput.value = ''
+      sha1Out.value = ''
+      clearStatus()
+      clearAnalysisStatus()
+    }, 2000)
+  } catch (error) {
+    console.error('Error deleting analysis:', error)
+    setAnalysisStatus('err', error.message || 'Failed to delete analysis')
+  } finally {
+    deleteBtn.disabled = false
+  }
+}
+
+// Event listeners for dynamic elements
+featureSlider.addEventListener('input', updateFeatureCount)
+algorithmSelect.addEventListener('change', updateRunButton)
+runAnalysisBtn.addEventListener('click', runFeatureSelection)
+deleteBtn.addEventListener('click', deleteAnalysis)
+
+// Initialize drag and drop
+setupDragAndDrop()

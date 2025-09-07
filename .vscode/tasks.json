@@ -1,0 +1,104 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Fastapi server",
+      "type": "shell",
+      "command": "uv run uvicorn app.start_fastapi:app --host 0.0.0.0 --port 8001 --reload",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Run Celery Worker",
+      "type": "shell",
+      "command": "uv run celery -A app.celery_tasks worker -l INFO",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Run Tailwind cli watcher",
+      "type": "shell",
+      "command": "npx @tailwindcss/cli -i input.css -o ./static/css/output.css --watch",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Run pytest",
+      "type": "shell",
+      "command": "uv run pytest -vs",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Start All Development Services",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Run Fastapi server",
+        "Run Celery Worker",
+        "Run Tailwind cli watcher"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Test and Start Services",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Run pytest",
+        "Start All Development Services"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    }
+  ]
+}

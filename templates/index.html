@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CpGenius</title>
+  <link rel="stylesheet" href="/static/css/output.css">
+</head>
+
+<body class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+  <div class="max-w-6xl mx-auto p-6">
+    <!-- Header -->
+    <header class="mb-8">
+      <h1
+        class="text-3xl sm:text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]">
+        <div class="flex items-center gap-4 mb-2">
+          <img src="/static/images/logo.png" alt="CpGenius Favicon" class="w-10 h-10" />
+          <div>
+            <h1
+              class="text-3xl sm:text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]">
+
+              CpGenius
+            </h1>
+            <p class="text-slate-400 mt-2 text-xl">Choose an option to get started.</p>
+          </div>
+        </div>
+      </h1>
+    </header>
+
+    <!-- Grid of options -->
+    <section class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <!-- Option: Create BVal Matrix -->
+      <a href="/bval/" aria-label="Create BVal Matrix"
+        class="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(168,85,247,0.15)] focus:outline-none focus:ring-2 focus:ring-cyan-400/60">
+        <div
+          class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-cyan-500/10 to-fuchsia-500/10">
+        </div>
+        <div class="p-6 relative z-10 flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <!-- Icon: list/table -->
+            <!-- <svg viewBox="0 0 24 24" class="h-10 w-10 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.45)]"
+              fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 6h16M4 10h16M4 14h10M4 18h6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg> -->
+            <img src="/static/images/preprocessor.png" alt="enrichment Icon" class="w-10 h-10" />
+          </div>
+          <div class="flex-1">
+            <h2 class="text-xl sm:text-2xl font-semibold text-slate-100">Idat Preprocessor</h2>
+            <p class="text-slate-400 mt-1">Upload idat files and generate a Beta value matrix with one click.</p>
+
+          </div>
+        </div>
+      </a>
+
+      <!-- Option: Feature Selection -->
+      <a href="/fsel/" aria-label="Feature Selection"
+        class="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(34,211,238,0.15)] focus:outline-none focus:ring-2 focus:ring-fuchsia-400/60">
+        <div
+          class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-fuchsia-500/10 to-violet-500/10">
+        </div>
+        <div class="p-6 relative z-10 flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <!-- Icon: wand/sparkles -->
+            <!-- <svg viewBox="0 0 24 24" class="h-10 w-10 text-fuchsia-400 drop-shadow-[0_0_10px_rgba(217,70,239,0.45)]"
+              fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true">
+              <circle cx="5" cy="6" r="1.25" />
+              <circle cx="9" cy="6" r="1.25" />
+              <circle cx="13" cy="6" r="1.25" />
+              <circle cx="17" cy="6" r="1.25" />
+              <circle cx="21" cy="6" r="1.25" />
+              <path d="M3 8h18l-6 6v3.5a1.5 1.5 0 0 1-.6 1.2l-2.8 2a1 1 0 0 1-1.6-.8v-5.9L3 8z" />
+              <path d="M14.5 20.5l2 2 4-4" />
+            </svg> -->
+            <img src="/static/images/funnel.png" alt="Feature Selection Icon" class="w-10 h-10" />
+          </div>
+          <div class="flex-1">
+            <h2 class="text-xl sm:text-2xl font-semibold text-slate-100">Feature Selection</h2>
+            <p class="text-slate-400 mt-1">Rank or filter features from your dataset using multiple strategies.</p>
+
+          </div>
+        </div>
+      </a>
+
+      <!-- Option: dmp analysis -->
+      <a href="/dmp/" aria-label="DMP Analysis"
+        class="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(34,211,238,0.15)] focus:outline-none focus:ring-2 focus:ring-fuchsia-400/60">
+        <div
+          class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-fuchsia-500/10 to-violet-500/10">
+        </div>
+        <div class="p-6 relative z-10 flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <!-- Icon: wand/sparkles -->
+            <img src="/static/images/volcano.png" alt="DMP Analysis Icon" class="w-10 h-10" />
+
+          </div>
+          <div class="flex-1">
+            <h2 class="text-xl sm:text-2xl font-semibold text-slate-100">DMP Analysis</h2>
+            <p class="text-slate-400 mt-1">Analyze the dataset using differential methylation analysis.</p>
+
+          </div>
+        </div>
+      </a>
+
+      <!-- Option: Enrichment Analysis -->
+      <a href="/enrichment/" aria-label="Enrichment Analysis"
+        class="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(16,185,129,0.15)] focus:outline-none focus:ring-2 focus:ring-emerald-400/60">
+        <div
+          class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10">
+        </div>
+        <div class="p-6 relative z-10 flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <!-- Icon: network/graph -->
+            <!-- <svg viewBox="0 0 24 24" class="h-10 w-10 text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.45)]"
+              fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="6" cy="6" r="2" />
+              <circle cx="18" cy="6" r="2" />
+              <circle cx="6" cy="18" r="2" />
+              <circle cx="18" cy="18" r="2" />
+              <path d="M8 6h8M6 8v8M18 8v8M8 18h8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg> -->
+            <img src="/static/images/enrichment.png" alt="enrichment Icon" class="w-10 h-10" />
+          </div>
+          <div class="flex-1">
+            <h2 class="text-xl sm:text-2xl font-semibold text-slate-100">Enrichment Analysis</h2>
+            <p class="text-slate-400 mt-1">Run enrichment on selected features to identify over‑represented pathways.
+            </p>
+
+          </div>
+        </div>
+      </a>
+
+      <!-- Option: Documentation -->
+      <a href="/documentation/" aria-label="Documentation"
+        class="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(99,102,241,0.15)] focus:outline-none focus:ring-2 focus:ring-indigo-400/60">
+        <div
+          class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-indigo-500/10 to-sky-500/10">
+        </div>
+        <div class="p-6 relative z-10 flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <!-- Icon: book/document -->
+            <!-- <svg viewBox="0 0 24 24" class="h-10 w-10 text-indigo-400 drop-shadow-[0_0_10px_rgba(99,102,241,0.45)]"
+              fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M6 4h8a4 4 0 014 4v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" />
+              <path d="M8 8h8M8 12h8M8 16h6" stroke-linecap="round" />
+            </svg> -->
+            <img src="/static/images/documentation.png" alt="enrichment Icon" class="w-10 h-10" />
+          </div>
+          <div class="flex-1">
+            <h2 class="text-xl sm:text-2xl font-semibold text-slate-100">Documentation</h2>
+            <p class="text-slate-400 mt-1">Read the user guide, API reference, and tutorials.</p>
+
+          </div>
+        </div>
+      </a>
+
+
+      <!-- Option: Rest Api -->
+      <a href="/redoc/" aria-label="Documentation"
+        class="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(99,102,241,0.15)] focus:outline-none focus:ring-2 focus:ring-indigo-400/60">
+        <div
+          class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-indigo-500/10 to-sky-500/10">
+        </div>
+        <div class="p-6 relative z-10 flex items-start gap-4">
+          <div class="flex-shrink-0">
+            <!-- Icon: book/document -->
+            <!-- <svg viewBox="0 0 24 24" class="h-10 w-10 text-indigo-400 drop-shadow-[0_0_10px_rgba(99,102,241,0.45)]"
+              fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M6 4h8a4 4 0 014 4v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" />
+              <path d="M8 8h8M8 12h8M8 16h6" stroke-linecap="round" />
+            </svg> -->
+            <img src="/static/images/rest_api.png" alt="enrichment Icon" class="w-10 h-10" />
+          </div>
+          <div class="flex-1">
+            <h2 class="text-xl sm:text-2xl font-semibold text-slate-100">Rest API</h2>
+            <p class="text-slate-400 mt-1">We offer a REST API for programmatic access to our features.</p>
+
+          </div>
+        </div>
+      </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-10 text-xs text-slate-500">
+      <p>Tip: change each card's <code>href</code> to route anywhere (e.g., <code>/bval</code> or
+        <code>./bval/index.html</code>). Cards are keyboard accessible and mobile‑friendly.
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // Optional: enable Enter/Space activation for cards
+    document.querySelectorAll('a.group').forEach(el => {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          el.click();
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

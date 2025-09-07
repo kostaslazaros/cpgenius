@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>File Hash Tester — SHA‑1 / SHA‑256</title>
+  <style>
+    :root{
+      --bg:#0b0d10;--card:#12161c;--muted:#778;--text:#e9eef3;--accent:#6aa1ff;--accent-2:#9effc3;--danger:#ff6a6a;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b0d10 0%, #0f1319 100%);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"}
+    .wrap{max-width:900px;margin:40px auto;padding:0 16px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+    h1{font-size:clamp(20px,4vw,28px);margin:0}
+    .card{background:var(--card);border:1px solid #1e2430;border-radius:var(--radius);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+    .grid{display:grid;gap:14px}
+    .pad{padding:18px}
+    .muted{color:var(--muted)}
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .btn{appearance:none;border:1px solid #2a3342;background:#16202c;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600;transition:.15s transform,.15s background,.15s border}
+    .btn:hover{transform:translateY(-1px);border-color:#3a465a}
+    .btn.primary{background:linear-gradient(180deg,#1b2b45,#0f1a2a);border-color:#35507a}
+    .btn.ghost{background:transparent}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+    .picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .algos{display:flex;gap:10px;flex-wrap:wrap}
+    .chip{border:1px solid #2a3342;background:#16202c;padding:6px 10px;border-radius:9999px;display:inline-flex;align-items:center;gap:8px}
+    .chip input{accent-color:var(--accent)}
+
+    .drop{border:2px dashed #2a3342;border-radius:var(--radius);padding:22px;text-align:center;background:#0f141b;transition:.2s border-color,.2s background}
+    .drop.dragover{border-color:var(--accent);background:#101927}
+    .drop p{margin:6px 0}
+    .drop small{color:var(--muted)}
+    input[type=file]{display:none}
+    label.file-btn{display:inline-flex;align-items:center;gap:8px}
+
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:700px){.meta{grid-template-columns:1fr}}
+    .meta .row{display:flex;justify-content:space-between;gap:10px;background:#0f141b;border:1px solid #1f2734;border-radius:10px;padding:10px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+
+    .progress{height:12px;background:#0c1117;border-radius:9999px;overflow:hidden;border:1px solid #1d2532}
+    .bar{height:100%;width:0%;background:linear-gradient(90deg, var(--accent), var(--accent-2));transition:width .1s}
+
+    .result{display:grid;gap:10px}
+    .hash-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .hash{white-space:pre-wrap;word-break:break-all;background:#0f141b;border:1px solid #1f2734;border-radius:10px;padding:10px}
+    .copy-btn{border:1px solid #2a3342;background:#141b24;border-radius:8px;padding:6px 10px;cursor:pointer}
+    .warn{color:var(--danger);font-weight:600}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>File Hash Tester <span class="muted">(SHA‑1 / SHA‑256)</span></h1>
+      <button class="btn ghost" id="clearBtn" title="Reset">Reset</button>
+    </header>
+
+    <div class="card grid">
+      <div class="pad grid" style="gap:16px">
+        <div class="picker">
+          <div class="algos chip">
+            <label><input type="radio" name="algo" value="SHA-1" checked> SHA‑1</label>
+            <label><input type="radio" name="algo" value="SHA-256"> SHA‑256</label>
+          </div>
+          <span class="muted">SHA‑1 is broken for security. Use SHA‑256 for anything sensitive.</span>
+        </div>
+
+        <div id="drop" class="drop">
+          <p><strong>Drag & drop</strong> a file here</p>
+          <p>or</p>
+          <label class="btn primary file-btn">
+            <input type="file" id="fileInput" />
+            Choose a file
+          </label>
+          <p><small id="supportMsg"></small></p>
+        </div>
+
+        <div class="controls">
+          <button class="btn primary" id="hashBtn" disabled>Compute hash</button>
+          <div class="muted" id="status"></div>
+        </div>
+
+        <div class="progress" aria-hidden="true">
+          <div class="bar" id="bar"></div>
+        </div>
+
+        <div class="meta" id="meta" hidden>
+          <div class="row"><span>File</span> <span class="mono" id="fileName">—</span></div>
+          <div class="row"><span>Size</span> <span class="mono" id="fileSize">—</span></div>
+          <div class="row"><span>Last modified</span> <span class="mono" id="fileDate">—</span></div>
+          <div class="row"><span>Time</span> <span class="mono" id="timing">—</span></div>
+        </div>
+
+        <div class="pad result" id="result" hidden>
+          <div class="hash-row"><strong>Hash</strong> <button class="copy-btn" id="copyBtn">Copy</button></div>
+          <div class="hash mono" id="hash">—</div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer>
+      Tip: hashing very large files may use significant memory because the Web Crypto API requires the full file in memory. For huge files, consider a streaming SHA‑1 implementation.
+    </footer>
+  </div>
+
+<script>
+(function(){
+  const fileInput = document.getElementById('fileInput');
+  const drop = document.getElementById('drop');
+  const hashBtn = document.getElementById('hashBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const statusEl = document.getElementById('status');
+  const bar = document.getElementById('bar');
+  const meta = document.getElementById('meta');
+  const fileNameEl = document.getElementById('fileName');
+  const fileSizeEl = document.getElementById('fileSize');
+  const fileDateEl = document.getElementById('fileDate');
+  const timingEl = document.getElementById('timing');
+  const result = document.getElementById('result');
+  const hashEl = document.getElementById('hash');
+  const clearBtn = document.getElementById('clearBtn');
+  const supportMsg = document.getElementById('supportMsg');
+
+  let currentFile = null;
+
+  // Feature detection
+  const hasWebCrypto = !!(window.crypto && window.crypto.subtle && window.FileReader && Blob.prototype.arrayBuffer);
+  supportMsg.textContent = hasWebCrypto ? 'Web Crypto detected. Ready.' : 'Web Crypto not available in this browser.';
+
+  // Helpers
+  function bytes(n){
+    return new Intl.NumberFormat(undefined, {style:'unit', unit:'byte', unitDisplay:'narrow'}).format(n);
+  }
+  function fmtDate(d){
+    try { return new Intl.DateTimeFormat(undefined, {dateStyle:'medium', timeStyle:'short'}).format(d) } catch { return d.toLocaleString() }
+  }
+  function toHex(buffer){
+    const b = new Uint8Array(buffer);
+    let s = '';
+    for (let i=0;i<b.length;i++) s += b[i].toString(16).padStart(2,'0');
+    return s;
+  }
+  function setProgress(p){ bar.style.width = `${Math.max(0, Math.min(100, p))}%`; }
+  function reset(){
+    currentFile = null;
+    fileInput.value = '';
+    hashBtn.disabled = true;
+    statusEl.textContent = '';
+    setProgress(0);
+    meta.hidden = true;
+    result.hidden = true;
+    hashEl.textContent = '—';
+    fileNameEl.textContent = '—';
+    fileSizeEl.textContent = '—';
+    fileDateEl.textContent = '—';
+    timingEl.textContent = '—';
+  }
+
+  function setFile(file){
+    currentFile = file;
+    hashBtn.disabled = !file;
+    if (!file) return;
+    fileNameEl.textContent = file.name || '(unnamed)';
+    fileSizeEl.textContent = bytes(file.size);
+    fileDateEl.textContent = file.lastModified ? fmtDate(new Date(file.lastModified)) : '—';
+    meta.hidden = false;
+    result.hidden = true;
+    setProgress(0);
+    statusEl.textContent = 'Ready to hash.';
+  }
+
+  // Drag & drop
+  ;['dragenter','dragover'].forEach(evt => drop.addEventListener(evt, (e)=>{e.preventDefault(); drop.classList.add('dragover');}))
+  ;['dragleave','drop'].forEach(evt => drop.addEventListener(evt, (e)=>{e.preventDefault(); drop.classList.remove('dragover');}))
+  drop.addEventListener('drop', (e)=>{
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  fileInput.addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if (file) setFile(file);
+  });
+
+  // Copy
+  copyBtn.addEventListener('click', async ()=>{
+    try{
+      await navigator.clipboard.writeText(hashEl.textContent.trim());
+      copyBtn.textContent = 'Copied!';
+      setTimeout(()=>copyBtn.textContent='Copy', 1200);
+    }catch{
+      alert('Copy failed.');
+    }
+  });
+
+  // Clear
+  clearBtn.addEventListener('click', reset);
+
+  // Hashing
+  async function compute(){
+    if (!currentFile) return;
+    if (!hasWebCrypto){ statusEl.textContent = 'Web Crypto not supported in this browser.'; return; }
+
+    const algo = document.querySelector('input[name="algo"]:checked').value;
+
+    statusEl.textContent = 'Reading file…';
+
+    // Use FileReader so we can show real read progress
+    const reader = new FileReader();
+    const start = performance.now();
+
+    const arrayBuffer = await new Promise((resolve, reject)=>{
+      reader.onerror = () => reject(reader.error);
+      reader.onprogress = (e)=>{
+        if (e.lengthComputable){ setProgress((e.loaded / e.total) * 100); }
+      };
+      reader.onload = ()=> resolve(reader.result);
+      reader.readAsArrayBuffer(currentFile);
+    }).catch(err=>{ statusEl.textContent = 'Read error: ' + (err && err.message || err); throw err; });
+
+    statusEl.textContent = 'Hashing…';
+
+    let digestBuf;
+    try{
+      digestBuf = await crypto.subtle.digest(algo, arrayBuffer);
+    }catch(err){
+      statusEl.textContent = 'Hash error: ' + (err && err.message || err);
+      throw err;
+    }
+
+    const end = performance.now();
+    const ms = Math.max(0, end - start);
+
+    hashEl.textContent = toHex(digestBuf);
+    result.hidden = false;
+    statusEl.textContent = 'Done';
+    setProgress(100);
+    const mb = currentFile.size / (1024*1024);
+    const sec = ms/1000;
+    const speed = mb && sec ? (mb/sec).toFixed(2) : '—';
+    timingEl.textContent = `${ms.toFixed(0)} ms  •  ~${speed} MB/s`;
+  }
+
+  hashBtn.addEventListener('click', compute);
+  document.querySelectorAll('input[name="algo"]').forEach(r=> r.addEventListener('change', ()=>{ if(currentFile) compute(); }));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+Patient_ID,Age,Gender,BMI,BloodPressure,Cholesterol,Smoking,Prognosis
+1,45,M,28.5,140,220,Yes,High Risk
+2,32,F,24.1,120,180,No,Normal
+3,67,M,31.2,160,280,Yes,Critical
+4,28,F,22.8,110,160,No,Normal
+5,54,M,29.8,150,240,Yes,High Risk
+6,41,F,26.3,125,195,No,Normal
+7,72,M,33.1,170,300,Yes,Critical
+8,35,F,23.5,115,170,No,Normal
+9,58,M,30.2,155,260,Yes,High Risk
+10,39,F,25.7,122,185,No,Normal
+11,65,M,32.8,165,285,Yes,Critical
+12,29,F,21.9,108,155,No,Normal
+13,51,M,28.9,145,225,Yes,High Risk
+14,43,F,24.8,128,190,No,Normal
+15,69,M,34.2,175,310,Yes,Critical
+16,31,F,23.1,112,165,No,Normal
+17,56,M,29.5,152,245,Yes,High Risk
+18,37,F,25.4,120,180,No,Normal
+19,74,M,35.1,180,320,Yes,Critical
+20,26,F,22.3,105,150,No,Normal
+21,49,M,27.8,142,218,Yes,High Risk
+22,44,F,26.1,130,200,No,Normal
+23,71,M,33.9,172,295,Yes,Critical
+24,33,F,24.2,118,175,No,Normal
+25,53,M,29.1,148,235,Yes,High Risk
+26,40,F,25.9,124,188,No,Normal
+27,68,M,32.5,168,290,Yes,Critical
+28,30,F,23.7,114,168,No,Normal
+29,55,M,28.3,151,250,Yes,High Risk
+30,42,F,26.8,127,192,No,Normal
+31,73,M,34.8,178,315,Yes,Critical
+32,34,F,24.6,116,172,No,Normal
+33,57,M,30.8,154,255,Yes,High Risk
+34,38,F,25.2,121,183,No,Normal
+35,70,M,33.7,174,305,Yes,Critical
+36,27,F,22.5,107,158,No,Normal
+37,52,M,28.7,146,230,Yes,High Risk
+38,45,F,26.5,132,205,No,Normal
+39,75,M,35.5,182,325,Yes,Critical
+40,36,F,24.9,119,178,No,Normal

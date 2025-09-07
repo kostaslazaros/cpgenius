@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CpGenius</title>
+  <link rel="stylesheet" href="/static/css/output.css">
+</head>
+
+<body class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+  <div class="w-full mx-auto p-6 max-w-7xl">
+    <header class="mb-6 flex items-center justify-between">
+      <h1
+        class="text-2xl sm:text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]">
+        <img src="/static/images/logo.png" alt="CpGenius Favicon" class="inline-block w-8 h-8 align-middle mr-2" />
+        <a href="/">DMP Analysis</a>
+      </h1>
+      <!-- Enrichment Analysis Button -->
+      <a href="/enrichment"
+        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-emerald-700 hover:border-emerald-500 bg-emerald-800/40 hover:bg-emerald-800/60 text-emerald-200 hover:text-emerald-100 transition-all duration-200 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]">
+        <svg viewBox="0 0 24 24" class="h-5 w-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6" cy="6" r="2" />
+          <circle cx="18" cy="6" r="2" />
+          <circle cx="6" cy="18" r="2" />
+          <circle cx="18" cy="18" r="2" />
+          <path d="M8 6h8M6 8v8M18 8v8M8 18h8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+
+      </a>
+
+    </header>
+
+    <div
+      class="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+      <form id="fileForm" class="p-6 space-y-6" onsubmit="return false;">
+        <div>
+          <!-- <label for="fileInput" class="block text-sm font-medium text-slate-300 mb-2">Choose file</label> -->
+          <input id="fileInput" name="file" type="file" accept=".csv,text/csv"
+            class="block w-full text-base file:mr-4 file:py-3 file:px-5 file:rounded-2xl file:border-0 file:text-base file:font-medium file:bg-slate-800 file:text-slate-100 hover:file:bg-slate-700 cursor-pointer text-slate-200" />
+          <p class="text-xs text-slate-400 mt-2">CSV only. The <em>last</em> column header must be
+            <code>Prognosis</code>. Your file stays local for hashing and is uploaded only if not found.
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-2">file signature</label>
+          <input id="sha1Out" type="text" readonly
+            class="w-full rounded-2xl border-slate-800 bg-slate-800/70 text-cyan-300 font-mono text-sm sm:text-base px-3 py-2"
+            placeholder="—" />
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button id="goBtn"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-magenta-500 to-fuchsia-500 px-6 py-3 text-base sm:text-lg font-semibold shadow-lg shadow-magenta-500/20 ring-1 ring-magenta-400/30 hover:from-magenta-400 hover:to-fuchsia-400 hover:ring-magenta-300/50 hover:shadow-[0_0_25px_rgba(236,72,153,0.4)] active:scale-[.99] disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-live="polite">
+            <svg id="spinner" class="hidden animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Check & Upload</span>
+          </button>
+          <button id="resetBtn"
+            class="w-full sm:w-auto px-6 py-3 text-base sm:text-lg rounded-2xl border border-slate-700 hover:border-slate-500 bg-slate-800/40 hover:bg-slate-800/60"
+            type="button">Reset</button>
+          <button id="testDataBtn"
+            class="w-full sm:w-auto px-6 py-3 text-base sm:text-lg rounded-2xl border border-green-700 hover:border-green-500 bg-green-800/40 hover:bg-green-800/60"
+            type="button">🧪 Test Data</button>
+        </div>
+
+        <div id="status" class="hidden rounded-2xl border px-4 py-3 text-sm sm:text-base font-medium"></div>
+      </form>
+    </div>
+
+    <!-- Dynamic Analysis Section (shown after successful upload/exists check) -->
+    <div id="analysisSection"
+      class="hidden mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+      <div class="p-6 space-y-6">
+        <h2 class="text-xl font-semibold text-slate-200 border-b border-slate-700 pb-2">DMP Analysis</h2>
+
+        <!-- Prognosis Values Section -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+          <div>
+            <h3 class="text-lg font-medium text-slate-300 mb-3">Available Prognosis Values</h3>
+            <div id="availablePrognosisContainer"
+              class="border-2 border-dashed border-violet-400/50 rounded-xl bg-gradient-to-br from-transparent to-violet-900/10 p-4 md:p-6 min-h-[200px] max-h-[300px] overflow-y-auto shadow-[0_0_15px_rgba(236,72,153,0.1)] transition-all duration-300">
+              <div id="availablePrognosisList" class="space-y-2">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Drag values to the selection area or click to add</p>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-medium text-slate-300 mb-3">Selected Prognosis Values</h3>
+            <div id="selectedPrognosisContainer"
+              class="border-2 border-dashed border-violet-400/50 rounded-xl bg-gradient-to-br from-transparent to-violet-900/10 p-4 md:p-6 min-h-[200px] max-h-[300px] overflow-y-auto shadow-[0_0_15px_rgba(236,72,153,0.1)] transition-all duration-300">
+              <div id="selectedPrognosisList" class="space-y-2">
+                <div class="text-slate-500 text-center py-8">
+                  Drop prognosis values here
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Click items to remove them</p>
+          </div>
+        </div>
+
+        <!-- DMP Parameters -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div>
+            <h3 class="text-lg font-medium text-slate-300 mb-3">Delta Beta Threshold</h3>
+            <input id="deltaBetaInput" type="number" min="0" max="1" step="0.01" value="0.4"
+              class="w-full px-4 py-3 rounded-xl border border-magenta-700/40 bg-slate-800/50 text-slate-200 text-lg font-medium focus:border-magenta-500 focus:ring-2 focus:ring-magenta-500/20 focus:outline-none transition-all duration-200 shadow-[0_0_15px_rgba(236,72,153,0.1)]">
+            <p class="text-xs text-slate-400 mt-2">Minimum difference in methylation levels (0-1)</p>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-medium text-slate-300 mb-3">P-Value Threshold</h3>
+            <input id="pValueInput" type="number" min="0" max="1" step="0.01" value="0.05"
+              class="w-full px-4 py-3 rounded-xl border border-magenta-700/40 bg-slate-800/50 text-slate-200 text-lg font-medium focus:border-magenta-500 focus:ring-2 focus:ring-magenta-500/20 focus:outline-none transition-all duration-200 shadow-[0_0_15px_rgba(236,72,153,0.1)]">
+            <p class="text-xs text-slate-400 mt-2">Statistical significance threshold (0-1)</p>
+          </div>
+        </div>
+
+        <!-- Run Analysis Button -->
+        <div class="flex gap-3">
+          <button id="runAnalysisBtn" disabled
+            class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-base font-semibold shadow-lg ring-1 active:scale-[.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200
+                         enabled:bg-gradient-to-r enabled:from-magenta-500 enabled:to-fuchsia-500 enabled:shadow-[0_0_25px_rgba(236,72,153,0.4)] enabled:ring-magenta-400/30 enabled:hover:from-magenta-400 enabled:hover:to-fuchsia-400 enabled:hover:ring-magenta-300/50 enabled:hover:shadow-[0_0_35px_rgba(236,72,153,0.6)]
+                         disabled:bg-gradient-to-r disabled:from-slate-600 disabled:to-slate-500 disabled:shadow-slate-500/20 disabled:ring-slate-400/30">
+            <svg id="analysisSpinner" class="hidden animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Run DMP Analysis</span>
+          </button>
+        </div>
+
+        <!-- Analysis Status -->
+        <div id="analysisStatus" class="hidden rounded-xl border px-4 py-3 text-sm font-medium"></div>
+
+        <!-- Results Table -->
+        <div id="resultsSection" class="hidden">
+          <h3 class="text-lg font-medium text-slate-300 mb-3">Analysis Results</h3>
+          <div
+            class="border border-magenta-700/50 rounded-xl bg-slate-800/50 p-4 shadow-[0_0_20px_rgba(236,72,153,0.15)]">
+            <!-- Desktop Table View -->
+            <div id="resultsTable" class="hidden md:block overflow-x-auto">
+              <table class="w-full text-sm text-slate-300">
+                <thead>
+                  <tr class="border-b border-magenta-600/30">
+                    <th class="text-left py-3 px-4 text-magenta-300 font-semibold">File Name</th>
+                    <th class="text-right py-3 px-4 text-magenta-300 font-semibold">Size (MB)</th>
+                    <th class="text-center py-3 px-4 text-magenta-300 font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="resultsTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div id="resultsCards" class="block md:hidden space-y-3">
+              <!-- Dynamically populated -->
+            </div>
+
+            <div id="noResults" class="text-slate-500 text-center py-8">
+              No results available yet. Run DMP analysis to generate results.
+            </div>
+          </div>
+        </div>
+
+        <!-- Generated Images Gallery -->
+        <div id="imagesSection" class="hidden">
+          <h3 class="text-lg font-medium text-slate-300 mb-3">Generated Visualizations</h3>
+          <div class="border border-cyan-700/50 rounded-xl bg-slate-800/50 p-4 shadow-[0_0_20px_rgba(34,211,238,0.15)]">
+            <div id="imageGallery" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Dynamically populated -->
+            </div>
+            <div id="noImages" class="text-slate-500 text-center py-8">
+              No visualizations available yet. Images will appear after DMP analysis is complete.
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Danger Zone - Delete Section -->
+        <div id="deleteSection" class="hidden mt-8 border-t border-red-700/30 pt-6">
+          <div
+            class="border border-red-700/50 rounded-xl bg-gradient-to-r from-red-950/20 to-rose-950/20 p-6 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+            <h3 class="text-lg font-medium text-red-300 mb-3 flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+                </path>
+              </svg>
+              Danger Zone
+            </h3>
+            <p class="text-slate-400 text-sm mb-4">
+              Permanently delete this analysis and all associated files. This action cannot be undone.
+            </p>
+            <button id="deleteBtn"
+              class="inline-flex items-center gap-2 px-6 py-3 text-base font-semibold rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-500/20 ring-1 ring-red-400/30 hover:from-red-500 hover:to-rose-500 hover:ring-red-300/50 hover:shadow-[0_0_25px_rgba(239,68,68,0.4)] active:scale-[.99] transition-all duration-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                </path>
+              </svg>
+              Delete Analysis
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/js/dmp.js"></script>
+</body>
+
+</html>

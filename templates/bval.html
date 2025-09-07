@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CpGenius — Folder Upload</title>
+  <link rel="stylesheet" href="/static/css/output.css">
+</head>
+
+<body class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+  <div class="w-full mx-auto p-6 max-w-7xl">
+    <header class="mb-6 flex items-center justify-between">
+      <h1
+        class="text-3xl sm:text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]">
+        <img src="/static/images/logo.png" alt="CpGenius Favicon" class="inline-block w-8 h-8 align-middle mr-2" />
+        <a href="/">Idat Preprocessor</a>
+      </h1>
+      <!-- Feature Selection Button -->
+      <a href="/fsel"
+        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-fuchsia-700 hover:border-fuchsia-500 bg-fuchsia-800/40 hover:bg-fuchsia-800/60 text-fuchsia-200 hover:text-fuchsia-100 transition-all duration-200 shadow-[0_0_15px_rgba(217,70,239,0.3)] hover:shadow-[0_0_25px_rgba(217,70,239,0.5)]">
+        <svg viewBox="0 0 24 24" class="h-5 w-5 text-fuchsia-400" fill="none" stroke="currentColor" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <!-- Input features (dots) -->
+          <circle cx="5" cy="6" r="1.25" />
+          <circle cx="9" cy="6" r="1.25" />
+          <circle cx="13" cy="6" r="1.25" />
+          <circle cx="17" cy="6" r="1.25" />
+          <circle cx="21" cy="6" r="1.25" />
+          <!-- Funnel -->
+          <path d="M3 8h18l-6 6v3.5a1.5 1.5 0 0 1-.6 1.2l-2.8 2a1 1 0 0 1-1.6-.8v-5.9L3 8z" />
+          <!-- Output tick -->
+          <path d="M14.5 20.5l2 2 4-4" />
+        </svg>
+
+      </a>
+      <!-- Computes a stable SHA-1 for the selected folder (based on file paths + sizes + per-file hashes),
+           checks /featuren/exists/{id}, and uploads all files to UPLOAD_URL only if missing. -->
+    </header>
+
+    <div
+      class="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+      <form id="dirForm" class="p-6 space-y-6" onsubmit="return false;">
+        <div>
+          <input id="folderInput" name="folder" type="file" webkitdirectory multiple accept=".csv,.idat"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border-0 bg-slate-800 file:mr-4 file:py-3 file:px-5 file:rounded-2xl file:border-0 file:text-base file:font-medium file:bg-slate-800 file:text-slate-100 hover:file:bg-slate-700 cursor-pointer text-slate-200 px-6 py-3 text-base sm:text-lg" />
+          <p class="text-xs text-slate-400 mt-2">
+            Select a folder containing <code>.idat</code> or <code>.csv</code> files. A bundle SHA-1 is computed
+            locally.
+            Nothing is uploaded unless the bundle is missing on the server.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Bundle signature</label>
+            <input id="sha1Out" type="text" readonly
+              class="w-full rounded-2xl border-slate-800 bg-slate-800/70 text-cyan-300 font-mono text-sm sm:text-base px-3 py-2"
+              placeholder="—" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Files detected</label>
+            <input id="fileCountOut" type="text" readonly
+              class="w-full rounded-2xl border-slate-800 bg-slate-800/70 text-fuchsia-300 font-mono text-sm sm:text-base px-3 py-2"
+              placeholder="0" />
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button id="goBtn"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-6 py-3 text-base sm:text-lg font-semibold shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/30 hover:from-cyan-400 hover:to-fuchsia-400 hover:ring-cyan-300/50 active:scale-[.99] disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button" aria-live="polite">
+            <svg id="spinner" class="hidden animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Check & Upload</span>
+          </button>
+          <button id="resetBtn"
+            class="w-full sm:w-auto px-6 py-3 text-base sm:text-lg rounded-2xl border border-slate-700 hover:border-slate-500 bg-slate-800/40 hover:bg-slate-800/60"
+            type="button">Reset</button>
+          <button id="testImagesBtn"
+            class="w-full sm:w-auto px-6 py-3 text-base sm:text-lg rounded-2xl border border-green-700 hover:border-green-500 bg-green-800/40 hover:bg-green-800/60"
+            type="button">🧪 Test Data</button>
+        </div>
+
+        <div id="status" class="hidden rounded-2xl border px-4 py-3 text-sm sm:text-base font-medium"></div>
+      </form>
+    </div>
+
+    <!-- Generated Images Gallery -->
+    <div id="imagesSection"
+      class="hidden mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+      <div class="p-6 space-y-6">
+        <h2 class="text-xl font-semibold text-slate-200 border-b border-slate-700 pb-2">Generated Visualizations</h2>
+
+        <div class="border border-cyan-700/50 rounded-xl bg-slate-800/50 p-4 shadow-[0_0_20px_rgba(34,211,238,0.15)]">
+          <div id="imageGallery" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Dynamically populated -->
+          </div>
+          <div id="noImages" class="text-slate-500 text-center py-8">
+            No visualizations available yet. Images will appear after file processing is complete.
+          </div>
+        </div>
+
+        <!-- Download All Button -->
+        <div id="downloadAllSection" class="hidden mt-6 text-center">
+          <button id="downloadAllBtn"
+            class="group relative inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-green-500 px-10 py-5 text-xl font-bold text-white shadow-2xl shadow-emerald-500/40 ring-2 ring-emerald-400/50 hover:from-emerald-300 hover:via-emerald-400 hover:to-green-400 hover:ring-emerald-300/70 hover:shadow-[0_0_40px_rgba(16,185,129,0.8)] active:scale-[.97] transition-all duration-300 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100">
+            <!-- Download Icon -->
+            <svg id="downloadIcon" class="w-7 h-7 transition-transform duration-300 group-hover:scale-110" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+              </path>
+            </svg>
+            <!-- Loading Spinner (hidden by default) -->
+            <svg id="downloadSpinner" class="hidden w-7 h-7 animate-spin" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <!-- Button Text -->
+            <span id="downloadBtnText" class="font-extrabold tracking-wide">Download All Files (ZIP)</span>
+            <!-- Neon glow effect -->
+            <div
+              class="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400/20 via-emerald-500/20 to-green-500/20 blur-xl group-hover:from-emerald-300/30 group-hover:via-emerald-400/30 group-hover:to-green-400/30 transition-all duration-300">
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/js/bval.js"></script>
+</body>
+
+</html>
