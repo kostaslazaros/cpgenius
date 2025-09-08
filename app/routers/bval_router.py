@@ -132,21 +132,56 @@ async def get_processing_status(task_id: str):
     try:
         task_result = celery_app.AsyncResult(task_id)
 
+        # Initialize status response with basic info
         status_response = FileProcessingStatus(
-            task_id=task_id, status=task_result.status
+            task_id=task_id, status=task_result.status or "UNKNOWN"
         )
 
         if task_result.ready():
             if task_result.successful():
-                status_response.result = task_result.result
+                # Task completed successfully
+                try:
+                    status_response.result = task_result.result
+                except Exception as e:
+                    # Handle case where result is not serializable
+                    status_response.status = "SUCCESS"
+                    status_response.result = {"message": "Task completed successfully"}
+                    status_response.error = f"Result serialization issue: {str(e)}"
             else:
-                status_response.error = str(task_result.info)
+                # Task failed - ensure we always have error info
+                try:
+                    error_info = task_result.info
+                    if isinstance(error_info, Exception):
+                        status_response.error = str(error_info)
+                    elif isinstance(error_info, dict):
+                        status_response.error = error_info.get("error", str(error_info))
+                    else:
+                        status_response.error = (
+                            str(error_info)
+                            if error_info
+                            else "Task failed with unknown error"
+                        )
+                except Exception as e:
+                    status_response.error = (
+                        f"Unable to retrieve error details: {str(e)}"
+                    )
+
+                # Ensure status reflects failure
+                if status_response.status not in ["FAILURE", "REVOKED"]:
+                    status_response.status = "FAILURE"
+        else:
+            # Task is still running or pending
+            if not status_response.status or status_response.status == "UNKNOWN":
+                status_response.status = "PENDING"
 
         return status_response
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error checking task status: {str(e)}"
+        # Fallback: always return a valid JSON response even if everything fails
+        return FileProcessingStatus(
+            task_id=task_id,
+            status="ERROR",
+            error=f"Error checking task status: {str(e)}",
         )
 
 

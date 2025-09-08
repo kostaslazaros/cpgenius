@@ -4,6 +4,7 @@ const EXISTS_URL = (id) => `${URL_BASE}/exists/${encodeURIComponent(id)}`
 const UPLOAD_URL = `${URL_BASE}/upload`
 const IMAGES_BASE_URL = `${URL_BASE}/images`
 const METADATA_STATUS_URL = (id) => `${URL_BASE}/metadata-status/${encodeURIComponent(id)}`
+const TASK_STATUS_URL = (task_id) => `${URL_BASE}/status/${encodeURIComponent(task_id)}`
 const DOWNLOAD_ALL_URL = `${URL_BASE}/download-all`
 
 // --- Elements ---
@@ -17,6 +18,7 @@ const statusEl = document.getElementById('status')
 
 let selectedFiles = []
 let bundleId = null
+let currentTaskId = null
 let processingStartTime = null
 let processingTimer = null
 let originalStatusMessage = null
@@ -328,12 +330,97 @@ async function uploadBundle(id, files) {
 }
 
 async function checkMetadataStatus(id) {
-  const res = await fetch(METADATA_STATUS_URL(id), { method: 'GET' })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`Metadata check failed: ${res.status} ${text}`)
+  try {
+    const res = await fetch(METADATA_STATUS_URL(id), { method: 'GET' })
+    if (!res.ok) {
+      const text = await res.text().catch(() => 'Unknown error')
+      throw new Error(`Metadata check failed: ${res.status} ${text}`)
+    }
+
+    const data = await res.json()
+
+    // Ensure the response has the expected structure
+    return {
+      sha1_hash: data.sha1_hash || id,
+      processing_complete: Boolean(data.processing_complete),
+      metadata_exists: Boolean(data.metadata_exists),
+    }
+  } catch (error) {
+    // Return a safe default response instead of throwing
+    console.error('Metadata status check error:', error)
+    return {
+      sha1_hash: id,
+      processing_complete: false,
+      metadata_exists: false,
+      error: error.message,
+    }
   }
-  return res.json()
+}
+
+async function checkTaskStatus(taskId) {
+  try {
+    const res = await fetch(TASK_STATUS_URL(taskId), { method: 'GET' })
+    if (!res.ok) {
+      const text = await res.text().catch(() => 'Unknown error')
+      throw new Error(`Task status check failed: ${res.status} ${text}`)
+    }
+
+    const data = await res.json()
+    return {
+      task_id: data.task_id || taskId,
+      status: data.status || 'UNKNOWN',
+      result: data.result || null,
+      error: data.error || null,
+    }
+  } catch (error) {
+    console.error('Task status check error:', error)
+    return {
+      task_id: taskId,
+      status: 'ERROR',
+      result: null,
+      error: error.message,
+    }
+  }
+}
+
+async function checkProcessingStatus(sha1Hash, taskId = null) {
+  // First check metadata status
+  const metadataStatus = await checkMetadataStatus(sha1Hash)
+
+  // If we have a task ID, also check the Celery task status
+  if (taskId) {
+    const taskStatus = await checkTaskStatus(taskId)
+
+    // Check for the problematic case: Celery says SUCCESS but metadata doesn't exist
+    if (taskStatus.status === 'SUCCESS' && !metadataStatus.metadata_exists) {
+      return {
+        ...metadataStatus,
+        processing_complete: false,
+        celery_success_but_no_metadata: true,
+        error: 'Task completed successfully but metadata.json was not created - processing may have failed',
+      }
+    }
+
+    // If Celery task failed, return error immediately
+    if (taskStatus.status === 'FAILURE' || taskStatus.status === 'ERROR') {
+      return {
+        ...metadataStatus,
+        processing_complete: false,
+        error: taskStatus.error || 'Celery task failed',
+      }
+    }
+
+    // If task is still running, return not complete
+    if (taskStatus.status === 'PENDING' || taskStatus.status === 'STARTED') {
+      return {
+        ...metadataStatus,
+        processing_complete: false,
+      }
+    }
+  }
+
+  // Return metadata status as-is
+  return metadataStatus
 }
 
 // ---------- UI wiring ----------
@@ -343,6 +430,7 @@ inputEl.addEventListener('change', async () => {
   fileCountOut.value = '0'
   bundleId = null
   selectedFiles = []
+  currentTaskId = null
   clearStatus()
   hideImagesSection()
   stopProcessingTimer()
@@ -400,9 +488,15 @@ goBtn.addEventListener('click', async () => {
     const exists = await checkExists(bundleId)
     if (exists) {
       setStatus('Bundle already exists on the server. Checking processing status...', 'warn')
-      // Check if processing is complete for existing bundle
-      const metadataStatus = await checkMetadataStatus(bundleId)
-      if (metadataStatus.processing_complete) {
+      // Check if processing is complete for existing bundle (no task ID for existing)
+      const processingStatus = await checkProcessingStatus(bundleId, null)
+
+      if (processingStatus.error) {
+        setStatus(`❌ Existing bundle has errors: ${processingStatus.error}`, 'error')
+        return
+      }
+
+      if (processingStatus.processing_complete) {
         setStatus('✅ Bundle found and processing is complete!', 'ok')
         await loadImages(bundleId)
       } else {
@@ -414,8 +508,16 @@ goBtn.addEventListener('click', async () => {
     setStatus('📤 Not found on server. Uploading files…', 'warn')
     const uploadResponse = await uploadBundle(bundleId, selectedFiles)
     const data = await uploadResponse.json()
-    console.log(data.task_id ? 'Upload task ID: ' + data.task_id : 'No task ID returned')
-    setStatusWithProgress(' Preprocessing idat files...', 'warn', true)
+
+    // Store the task ID for status checking
+    if (data.task_id) {
+      currentTaskId = data.task_id
+      console.log('Upload task ID:', currentTaskId)
+    } else {
+      console.log('No task ID returned')
+    }
+
+    setStatusWithProgress('⚙️ Preprocessing idat files...', 'warn', true)
 
     // Start polling for images after successful upload
     startImagePolling(bundleId)
@@ -434,6 +536,7 @@ resetBtn.addEventListener('click', () => {
   fileCountOut.value = '0'
   bundleId = null
   selectedFiles = []
+  currentTaskId = null
   clearStatus()
   hideImagesSection()
   stopProcessingTimer()
@@ -550,9 +653,15 @@ async function loadImages(sha1Hash) {
 
   try {
     // First check if processing is complete by checking metadata.json
-    const metadataStatus = await checkMetadataStatus(sha1Hash)
+    const processingStatus = await checkProcessingStatus(sha1Hash, null)
 
-    if (!metadataStatus.processing_complete) {
+    if (processingStatus.error) {
+      // There was an error, hide images section
+      hideImagesSection()
+      return
+    }
+
+    if (!processingStatus.processing_complete) {
       // Processing not complete yet, hide images section
       hideImagesSection()
       return
@@ -684,12 +793,30 @@ function openImageModal(imageUrl, filename) {
 async function startImagePolling(sha1Hash, intervalMs = 10000) {
   if (!sha1Hash) return
 
+  // Reset error count for this polling session
+  window.pollingErrorCount = 0
+
   const checkImages = async () => {
     try {
-      // First check metadata status to provide better feedback
-      const metadataStatus = await checkMetadataStatus(sha1Hash)
+      // Use the combined status checking that handles Celery SUCCESS but no metadata
+      const processingStatus = await checkProcessingStatus(sha1Hash, currentTaskId)
 
-      if (metadataStatus.processing_complete) {
+      // Check if there was an error in the processing status
+      if (processingStatus.error) {
+        stopProcessingTimer()
+
+        // Special handling for Celery SUCCESS but no metadata case
+        if (processingStatus.celery_success_but_no_metadata) {
+          setStatus(`❌ Processing failed: ${processingStatus.error}`, 'error')
+        } else {
+          setStatus(`❌ Processing error: ${processingStatus.error}`, 'error')
+        }
+
+        clearInterval(pollInterval)
+        return
+      }
+
+      if (processingStatus.processing_complete) {
         // Processing complete, load images and show them
         stopProcessingTimer()
         await loadImages(sha1Hash)
@@ -704,11 +831,18 @@ async function startImagePolling(sha1Hash, intervalMs = 10000) {
         }
       }
     } catch (error) {
-      console.log('Image polling check failed (normal if no images yet):', error.message)
-    }
-  }
+      console.log('Image polling check failed:', error.message)
+      // Don't stop polling immediately on network errors, but limit retries
+      if (!window.pollingErrorCount) window.pollingErrorCount = 0
+      window.pollingErrorCount++
 
-  // Initial check
+      if (window.pollingErrorCount >= 5) {
+        stopProcessingTimer()
+        setStatus('❌ Too many polling errors. Please refresh and try again.', 'error')
+        clearInterval(pollInterval)
+      }
+    }
+  } // Initial check
   await checkImages()
 
   // Check every intervalMs (default 10 seconds)
