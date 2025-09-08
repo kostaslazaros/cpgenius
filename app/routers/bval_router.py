@@ -244,6 +244,27 @@ async def get_generated_images(sha1_hash: str):
     return {"sha1_hash": sha1_hash, "image_count": len(images), "images": images}
 
 
+@router.get("/metadata-status/{sha1_hash}")
+async def check_metadata_status(sha1_hash: str):
+    """Check if processing is complete by verifying metadata.json exists."""
+    storage_dir = cnf.bval_workdir / sha1_hash / "out"
+    metadata_file = storage_dir / "metadata.json"
+
+    if not storage_dir.exists():
+        return {
+            "sha1_hash": sha1_hash,
+            "processing_complete": False,
+            "metadata_exists": False,
+        }
+
+    metadata_exists = metadata_file.exists()
+    return {
+        "sha1_hash": sha1_hash,
+        "processing_complete": metadata_exists,
+        "metadata_exists": metadata_exists,
+    }
+
+
 @router.get("/download-all/{sha1_hash}")
 async def download_all_images(sha1_hash: str):
     """Download all PNG images and CSV files from the out directory as a ZIP file."""

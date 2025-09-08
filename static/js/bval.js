@@ -3,6 +3,7 @@ const URL_BASE = '/bval'
 const EXISTS_URL = (id) => `${URL_BASE}/exists/${encodeURIComponent(id)}`
 const UPLOAD_URL = `${URL_BASE}/upload`
 const IMAGES_BASE_URL = `${URL_BASE}/images`
+const METADATA_STATUS_URL = (id) => `${URL_BASE}/metadata-status/${encodeURIComponent(id)}`
 const DOWNLOAD_ALL_URL = `${URL_BASE}/download-all`
 
 // --- Elements ---
@@ -16,6 +17,9 @@ const statusEl = document.getElementById('status')
 
 let selectedFiles = []
 let bundleId = null
+let processingStartTime = null
+let processingTimer = null
+let originalStatusMessage = null
 
 function setStatus(msg, type = 'info') {
   statusEl.classList.remove(
@@ -61,6 +65,63 @@ function setStatus(msg, type = 'info') {
 function clearStatus() {
   statusEl.classList.add('hidden')
   statusEl.textContent = ''
+  stopProcessingTimer()
+}
+
+function startProcessingTimer() {
+  if (processingTimer) clearInterval(processingTimer)
+
+  // Store the original message when starting the timer
+  originalStatusMessage = statusEl.textContent
+  processingStartTime = Date.now()
+  processingTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - processingStartTime) / 1000)
+    const minutes = Math.floor(elapsed / 60)
+    const seconds = elapsed % 60
+    const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+    // Use the original message, don't keep appending
+    if (
+      originalStatusMessage &&
+      (originalStatusMessage.includes('⏳') ||
+        originalStatusMessage.includes('Preprocessing') ||
+        originalStatusMessage.includes('⚙️') ||
+        originalStatusMessage.includes('🔄'))
+    ) {
+      statusEl.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <svg class="animate-spin h-4 w-4 text-cyan-400" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>${originalStatusMessage}</span>
+          </div>
+          <div class="text-slate-400 text-sm font-mono">
+            <span class="text-yellow-300">${timeStr} elapsed</span>
+          </div>
+        </div>
+      `
+    }
+  }, 1000)
+}
+function stopProcessingTimer() {
+  if (processingTimer) {
+    clearInterval(processingTimer)
+    processingTimer = null
+    processingStartTime = null
+    originalStatusMessage = null
+  }
+}
+
+function setStatusWithProgress(msg, type = 'warn', showProgress = false) {
+  setStatus(msg, type)
+
+  if (showProgress && (type === 'warn' || msg.includes('Processing') || msg.includes('⏳'))) {
+    startProcessingTimer()
+  } else {
+    stopProcessingTimer()
+  }
 }
 
 // ---------- Helpers ----------
@@ -266,13 +327,26 @@ async function uploadBundle(id, files) {
   return res
 }
 
+async function checkMetadataStatus(id) {
+  const res = await fetch(METADATA_STATUS_URL(id), { method: 'GET' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Metadata check failed: ${res.status} ${text}`)
+  }
+  return res.json()
+}
+
 // ---------- UI wiring ----------
 inputEl.addEventListener('change', async () => {
-  clearStatus()
+  // Reset page state like reset button when new folder is selected
   shaOut.value = ''
   fileCountOut.value = '0'
   bundleId = null
   selectedFiles = []
+  clearStatus()
+  hideImagesSection()
+  stopProcessingTimer()
+
   const files = inputEl.files
   if (!files || files.length === 0) {
     setStatus('No files selected.', 'info')
@@ -325,16 +399,23 @@ goBtn.addEventListener('click', async () => {
   try {
     const exists = await checkExists(bundleId)
     if (exists) {
-      setStatus('Bundle already exists on the server. No upload needed.', 'ok')
-      // Load images for existing bundle
-      await loadImages(bundleId)
+      setStatus('Bundle already exists on the server. Checking processing status...', 'warn')
+      // Check if processing is complete for existing bundle
+      const metadataStatus = await checkMetadataStatus(bundleId)
+      if (metadataStatus.processing_complete) {
+        setStatus('✅ Bundle found and processing is complete!', 'ok')
+        await loadImages(bundleId)
+      } else {
+        setStatusWithProgress('🔄 Bundle found but still processing. Monitoring status...', 'warn', true)
+        startImagePolling(bundleId)
+      }
       return
     }
-    setStatus('Not found on server. Uploading files…', 'warn')
+    setStatus('📤 Not found on server. Uploading files…', 'warn')
     const uploadResponse = await uploadBundle(bundleId, selectedFiles)
     const data = await uploadResponse.json()
     console.log(data.task_id ? 'Upload task ID: ' + data.task_id : 'No task ID returned')
-    setStatus('Upload complete. Bundle is now stored. Processing files...', 'ok')
+    setStatusWithProgress(' Preprocessing idat files...', 'warn', true)
 
     // Start polling for images after successful upload
     startImagePolling(bundleId)
@@ -355,6 +436,7 @@ resetBtn.addEventListener('click', () => {
   selectedFiles = []
   clearStatus()
   hideImagesSection()
+  stopProcessingTimer()
 })
 
 // Test button for demonstrating image functionality
@@ -403,7 +485,7 @@ if (downloadAllBtn) {
       downloadSpinner.classList.remove('hidden')
       downloadBtnText.textContent = 'Creating ZIP file...'
       downloadAllBtn.classList.add('cursor-not-allowed')
-      setStatus('📦 Compressing files, please wait...', 'warn')
+      setStatusWithProgress('📦 Compressing files, please wait...', 'warn', true)
 
       const response = await fetch(`${DOWNLOAD_ALL_URL}/${window.currentImagesSha1}`)
       if (!response.ok) {
@@ -412,6 +494,7 @@ if (downloadAllBtn) {
 
       // Update status for download phase
       downloadBtnText.textContent = 'Downloading...'
+      stopProcessingTimer()
       setStatus('⬇️ ZIP file ready, downloading...', 'warn')
 
       // Create download link
@@ -427,6 +510,7 @@ if (downloadAllBtn) {
 
       setStatus('✅ Files downloaded successfully!', 'ok')
     } catch (error) {
+      stopProcessingTimer()
       setStatus('❌ Error downloading files: ' + error.message, 'error')
     } finally {
       // Restore button state
@@ -465,6 +549,16 @@ async function loadImages(sha1Hash) {
   if (!sha1Hash) return
 
   try {
+    // First check if processing is complete by checking metadata.json
+    const metadataStatus = await checkMetadataStatus(sha1Hash)
+
+    if (!metadataStatus.processing_complete) {
+      // Processing not complete yet, hide images section
+      hideImagesSection()
+      return
+    }
+
+    // Processing is complete, now load images
     const response = await fetch(`${IMAGES_BASE_URL}/${sha1Hash}`)
     if (!response.ok) {
       if (response.status === 404) {
@@ -592,7 +686,23 @@ async function startImagePolling(sha1Hash, intervalMs = 10000) {
 
   const checkImages = async () => {
     try {
-      await loadImages(sha1Hash)
+      // First check metadata status to provide better feedback
+      const metadataStatus = await checkMetadataStatus(sha1Hash)
+
+      if (metadataStatus.processing_complete) {
+        // Processing complete, load images and show them
+        stopProcessingTimer()
+        await loadImages(sha1Hash)
+        setStatus('✅ Processing complete! Files are ready for download.', 'ok')
+        // Stop polling since processing is done
+        clearInterval(pollInterval)
+        return
+      } else {
+        // Still processing, update status with progress indicator
+        if (!processingTimer) {
+          setStatusWithProgress('⏳ Processing files... Please wait', 'warn', true)
+        }
+      }
     } catch (error) {
       console.log('Image polling check failed (normal if no images yet):', error.message)
     }
@@ -604,11 +714,13 @@ async function startImagePolling(sha1Hash, intervalMs = 10000) {
   // Check every intervalMs (default 10 seconds)
   const pollInterval = setInterval(checkImages, intervalMs)
 
-  // Stop polling after 5 minutes (enough time for most processing)
+  // Stop polling after 10 hours (enough time for most processing)
   setTimeout(() => {
     clearInterval(pollInterval)
+    stopProcessingTimer()
+    setStatus('⏰ Processing timeout reached. Please check manually or try again.', 'warn')
     console.log('Stopped image polling for', sha1Hash)
-  }, 5 * 60 * 1000)
+  }, 24 * 60 * 60 * 1000)
 
   return pollInterval
 }
