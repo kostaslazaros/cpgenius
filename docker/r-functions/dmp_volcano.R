@@ -2,7 +2,9 @@ library(glue)
 library(limma)
 library(ggplot2)
 library(ggrepel)
+library(dplyr)
 library(optparse)
+library(jsonlite)
 
 option_list <- list(
   make_option(c("-c", "--csv_path"), type = "character", default = NULL,
@@ -24,12 +26,20 @@ dmp_volcano <- function(csv_path, condition1, condition2, delta_beta_thres, p_va
   # Comparison Groups
   comp_vec <- c(condition1, condition2)
 
+  filname <- glue("/output/dmps_{comp_vec[1]}_vs_{comp_vec[2]}_db{delta_beta_thres}_pval{p_value_thres}")
+  png_name <- paste0(filname, ".png")
+  csv_name <- paste0(filname, ".csv")
+  json_name <- paste0(filname, ".json")
+
   # Read beta-values matrix from disk
   bvals <- read.csv(file=csv_path,
                     header=TRUE,
                     stringsAsFactors=TRUE)
 
   bvals <- bvals[bvals$Prognosis %in% comp_vec, , drop = FALSE]
+
+  tag_value_counts <- bvals %>% count(Prognosis)
+  dict_counts <- as.list(setNames(tag_value_counts$n, tag_value_counts$Prognosis))
 
   # this is the factor of interest
   prognosis <- factor(bvals$Prognosis)
@@ -94,20 +104,37 @@ dmp_volcano <- function(csv_path, condition1, condition2, delta_beta_thres, p_va
     coord_cartesian(ylim=c(0, max(DMPs$neg_log10_pval)), xlim=c(min(DMPs$deltaBeta), max(DMPs$deltaBeta))) +
     labs(color='', x=expression("Delta Beta"), y=expression("-log"[10]*"p-value")) +
     scale_x_continuous(breaks=seq(min(DMPs$deltaBeta), 1, max(DMPs$deltaBeta))) +
-    ggtitle(glue::glue("DMPs ({comp_vec[1]} vs {comp_vec[2]})"))
+    # ggtitle(glue::glue("DMPs ({comp_vec[1]} vs {comp_vec[2]})"))
+    ggtitle(glue::glue("DMPs ({comp_vec[1]} vs {comp_vec[2]})"), 
+            subtitle = glue::glue("deltaBeta: {delta_beta_thres}, p-value: {p_value_thres}")) +
+    theme(plot.subtitle = element_text(hjust = 0.5, size = 15))
 
   # Adding labels with ggrepel for better visibility and avoiding overlaps
   p_labeled <- p + geom_label_repel(data=df_annotated, aes(label=rownames(df_annotated), x=deltaBeta, y= -log10(P.Value)),
                                              box.padding=0.35, point.padding = 0.5,
                                              size=6, segment.color='grey50', show.legend=FALSE)
 
-  ggsave(glue("/output/dmp_volcano_plot_{comp_vec[1]}_vs_{comp_vec[2]}.png"),
+  ggsave(file = png_name,
                   plot = p_labeled, width = 11, height = 6, units = "in", dpi = 300, bg = "white")
 
   DMPs <- subset(DMPs, diffexpressed %in% c("UP", "DOWN"))
   DMPs <- cbind(Feature = rownames(DMPs), DMPs)
 
-  write.csv(DMPs, glue("/output/dmps_{comp_vec[1]}_vs_{comp_vec[2]}.csv"), row.names = FALSE)
+  write.csv(DMPs, file = csv_name, row.names = FALSE)
+  
+  completion_time <- Sys.time()
+  
+  # Wrap everything in a list
+  all_data <- list(
+    analysis_time=completion_time,
+    compared_conditions=comp_vec,
+    delta_beta_threshold=delta_beta_thres,
+    pvalue_threshold=p_value_thres,
+    condition_distribution=dict_counts
+  )
+  
+  json_data <- toJSON(all_data, pretty = TRUE, auto_unbox = TRUE)
+  write(json_data, file = json_name)
 }
 
 
