@@ -15,6 +15,9 @@ const goBtn = document.getElementById('goBtn')
 const spinner = document.getElementById('spinner')
 const resetBtn = document.getElementById('resetBtn')
 const statusEl = document.getElementById('status')
+const folderInfoEl = document.getElementById('folderInfo')
+const folderNameEl = document.getElementById('folderName')
+const folderFileCountEl = document.getElementById('folderFileCount')
 
 let selectedFiles = []
 let bundleId = null
@@ -123,6 +126,20 @@ function setStatusWithProgress(msg, type = 'warn', showProgress = false) {
     startProcessingTimer()
   } else {
     stopProcessingTimer()
+  }
+}
+
+function showFolderInfo(folderName, fileCount) {
+  if (folderInfoEl && folderNameEl && folderFileCountEl) {
+    folderNameEl.textContent = folderName
+    folderFileCountEl.textContent = `${fileCount}`
+    folderInfoEl.classList.remove('hidden')
+  }
+}
+
+function hideFolderInfo() {
+  if (folderInfoEl) {
+    folderInfoEl.classList.add('hidden')
   }
 }
 
@@ -434,12 +451,24 @@ inputEl.addEventListener('change', async () => {
   clearStatus()
   hideImagesSection()
   stopProcessingTimer()
+  hideFolderInfo()
 
   const files = inputEl.files
   if (!files || files.length === 0) {
     setStatus('No files selected.', 'info')
     return
   }
+
+  // Extract folder name from the first file's path
+  const firstFile = files[0]
+  let folderName = 'Unknown folder'
+  if (firstFile && firstFile.webkitRelativePath) {
+    const pathParts = firstFile.webkitRelativePath.split('/')
+    folderName = pathParts[0] || 'Unknown folder'
+  }
+
+  // Show folder info immediately
+  showFolderInfo(folderName, files.length)
 
   goBtn.disabled = true
   spinner.classList.remove('hidden')
@@ -459,12 +488,22 @@ inputEl.addEventListener('change', async () => {
     const { bundleId: id, items } = await computeBundleSha(files)
     if (!id) {
       setStatus('No .csv or .idat files found in the selected folder.', 'info')
+      // Update folder info to show 0 valid files
+      showFolderInfo(folderName, `0 valid files (${files.length} total)`)
       return
     }
     bundleId = id
     selectedFiles = items
     shaOut.value = bundleId
     fileCountOut.value = String(selectedFiles.length)
+
+    // Update folder info with valid file count
+    const validFileText =
+      selectedFiles.length === files.length
+        ? `${selectedFiles.length} files`
+        : `${selectedFiles.length} valid files (${files.length} total)`
+    showFolderInfo(folderName, validFileText)
+
     setStatus(`Bundle ready. ${selectedFiles.length} file(s) hashed.`, 'ok')
   } catch (err) {
     console.error(err)
@@ -517,7 +556,7 @@ goBtn.addEventListener('click', async () => {
       console.log('No task ID returned')
     }
 
-    setStatusWithProgress('⚙️ Preprocessing idat files...', 'warn', true)
+    setStatusWithProgress('Preprocessing idat files...', 'warn', true)
 
     // Start polling for images after successful upload
     startImagePolling(bundleId)
@@ -539,6 +578,7 @@ resetBtn.addEventListener('click', () => {
   currentTaskId = null
   clearStatus()
   hideImagesSection()
+  hideFolderInfo()
   stopProcessingTimer()
 })
 

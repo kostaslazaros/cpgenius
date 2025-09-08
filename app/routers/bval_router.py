@@ -247,6 +247,8 @@ async def remove_all_files(delete_pass: str):
 
     try:
         shutil.rmtree(UPLOAD_DIR)
+        # Recreate the upload directory after deletion
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         return {"message": "All uploaded files removed successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error removing files: {str(e)}")
