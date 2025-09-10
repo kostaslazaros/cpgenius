@@ -8,6 +8,11 @@ from ..utils.get_metadata import get_metadata
 from .celery import app
 
 
+def _docker_out_csv(condition_1, condition_2, delta_beta, p_value):
+    """Generate the expected output CSV filename from the Docker DMP analysis."""
+    return f"dmps_{condition_1}_vs_{condition_2}_db{delta_beta}_pval{p_value}.csv"
+
+
 @app.task(bind=True)
 def dmp_selection_task(
     self,
@@ -25,13 +30,13 @@ def dmp_selection_task(
         self.update_state(
             state="PROCESSING", meta={"status": "Loading data", "progress": 0}
         )
+        docker_csv_name = _docker_out_csv(condition_1, condition_2, delta_beta, p_value)
+
         storage_path = Path(storage_dir).resolve()
-        # input_path = storage_path / "in"  # Files are in the 'in'
-        # output_path = storage_path / "out"
+
         input_path = storage_path
         output_path = storage_path / "out"
         output_path.mkdir(parents=True, exist_ok=True)
-        docker_csv_name = f"dmps_{condition_1}_vs_{condition_2}.csv"
         docker_csv_path = output_path / docker_csv_name
         csv_with_genes_path = output_path / f"{docker_csv_name}_with_genes.csv"
 
