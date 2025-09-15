@@ -661,7 +661,8 @@ function renderResultsTable(results) {
 
     // Get current feature slider value for the lines parameter
     const linesParam = featureSlider.value
-    const downloadUrl = `${result.download_url}?lines=${linesParam}`
+    const baseDownloadUrl = result.download_url
+    const downloadUrl = `${baseDownloadUrl}?lines=${linesParam}`
 
     // Desktop table row
     const row = document.createElement('tr')
@@ -672,13 +673,15 @@ function renderResultsTable(results) {
       <td class="py-4 px-4 text-right text-slate-300">${sizeInMB}</td>
       <td class="py-4 px-4 text-center">
         <a href="${downloadUrl}"
+           data-download-base="${baseDownloadUrl}"
+           data-label="download"
            download="${result.filename}"
            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-magenta-200 bg-gradient-to-r from-magenta-900/40 to-fuchsia-900/40 hover:from-magenta-800/60 hover:to-fuchsia-800/60 border border-magenta-500/50 hover:border-magenta-400 rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_25px_rgba(236,72,153,0.5)]"
            title="Download first ${linesParam} lines">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
-          Download (${linesParam} lines)
+          <span class="download-lines">Download (${linesParam} lines)</span>
         </a>
       </td>
     `
@@ -696,13 +699,15 @@ function renderResultsTable(results) {
           <span class="text-slate-400 text-sm ml-2 flex-shrink-0">${sizeInMB} MB</span>
         </div>
         <a href="${downloadUrl}"
+           data-download-base="${baseDownloadUrl}"
+           data-label="download-csv"
            download="${result.filename}"
            class="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-magenta-200 bg-gradient-to-r from-magenta-900/50 to-fuchsia-900/50 hover:from-magenta-800/70 hover:to-fuchsia-800/70 border border-magenta-500/50 hover:border-magenta-400 rounded-lg transition-all duration-200 shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_25px_rgba(236,72,153,0.5)] active:scale-95"
            title="Download first ${linesParam} lines">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
-          Download CSV (${linesParam} lines)
+          <span class="download-lines">Download CSV (${linesParam} lines)</span>
         </a>
       </div>
     `
@@ -883,33 +888,32 @@ function updateDownloadLinks() {
   // Update all download links with the new lines parameter
   const linesParam = featureSlider.value
 
-  // Update desktop table download links
-  const tableLinks = document.querySelectorAll(`#resultsTableBody a[href*="${URL_DOWNLOAD}"]`)
-  tableLinks.forEach((link) => {
-    const baseUrl = link.href.split('?')[0] // Remove existing parameters
-    link.href = `${baseUrl}?lines=${linesParam}`
-    link.title = `Download first ${linesParam} lines`
+  // Select all links we've annotated with data-download-base
+  const links = document.querySelectorAll('a[data-download-base]')
+  links.forEach((link) => {
+    try {
+      const base = link.getAttribute('data-download-base') || link.href.split('?')[0]
+      link.href = `${base}?lines=${encodeURIComponent(linesParam)}`
+      link.title = `Download first ${linesParam} lines`
 
-    // Update button text to show lines count
-    const buttonText = link.querySelector('svg').nextSibling
-    if (buttonText && buttonText.nodeType === Node.TEXT_NODE) {
-      link.innerHTML = link.innerHTML
-        .replace(/Download \(\d+ lines\)/, `Download (${linesParam} lines)`)
-        .replace(/Download$/, `Download (${linesParam} lines)`)
+      // Update visible label inside the button if present
+      const labelSpan = link.querySelector('.download-lines')
+      if (labelSpan) {
+        // Preserve any surrounding text but replace the numeric part
+        if (link.getAttribute('data-label') === 'download-csv') {
+          labelSpan.textContent = `Download CSV (${linesParam} lines)`
+        } else {
+          labelSpan.textContent = `Download (${linesParam} lines)`
+        }
+      } else {
+        // Fallback: replace innerText occurrences
+        link.textContent = link.textContent.replace(/Download( CSV)?( \(\d+ lines\))?/, (m, p1) => {
+          return p1 ? `Download CSV (${linesParam} lines)` : `Download (${linesParam} lines)`
+        })
+      }
+    } catch (e) {
+      console.error('Failed to update download link', e, link)
     }
-  })
-
-  // Update mobile card download links
-  const cardLinks = document.querySelectorAll(`#resultsCards a[href*="${URL_DOWNLOAD}"]`)
-  cardLinks.forEach((link) => {
-    const baseUrl = link.href.split('?')[0] // Remove existing parameters
-    link.href = `${baseUrl}?lines=${linesParam}`
-    link.title = `Download first ${linesParam} lines`
-
-    // Update button text to show lines count
-    link.innerHTML = link.innerHTML
-      .replace(/Download CSV \(\d+ lines\)/, `Download CSV (${linesParam} lines)`)
-      .replace(/Download CSV$/, `Download CSV (${linesParam} lines)`)
   })
 }
 
