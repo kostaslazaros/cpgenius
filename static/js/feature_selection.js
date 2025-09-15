@@ -403,7 +403,8 @@ resetBtn.addEventListener('click', () => {
 
 // Test button for demonstrating feature selection functionality
 testDataBtn.addEventListener('click', async () => {
-  const testSha1 = '61d6bde6c060c974a32363f980b4f159c31b57d4'
+  // const testSha1 = '61d6bde6c060c974a32363f980b4f159c31b57d4'
+  const testSha1 = '8d2f51cc4f2a4ab7e627c0b541c0d2e215f70274'
   sha1Out.value = testSha1
   setStatus('warn', 'Loading test data...')
   try {

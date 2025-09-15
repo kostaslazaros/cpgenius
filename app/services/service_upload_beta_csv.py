@@ -110,7 +110,7 @@ class UploadBetaValuesCSVService:
 
             # Persist and start processing
             storage_dir.mkdir(parents=True, exist_ok=True)
-            final_file_path = storage_dir / file.filename
+            final_file_path = storage_dir / "bval_data.csv"
             shutil.copy2(temp_file_path, final_file_path)
 
             task = task_analyze_bvals_csv.delay(

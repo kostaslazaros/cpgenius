@@ -1,6 +1,8 @@
 # DMP Router
 # Handles uploading CSV files, retrieving prognosis values,
 # running DMP analysis tasks, and managing results
+import shutil
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
@@ -135,3 +137,18 @@ async def serve_generated_image(sha1_hash: str, filename: str):
         raise HTTPException(status_code=404, detail="Image not found")
 
     return FileResponse(path=str(image_path), filename=filename, media_type="image/png")
+
+
+@router.delete("/remove/{sha1_hash}")
+async def remove_file(sha1_hash: str):
+    """Remove a file and all its results by SHA1 hash."""
+    storage_dir = cnf.dmp_workdir / sha1_hash / "out"
+
+    if not storage_dir.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        shutil.rmtree(storage_dir)
+        return {"message": f"Results for {sha1_hash} deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error removing file: {str(e)}")

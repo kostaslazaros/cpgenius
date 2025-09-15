@@ -354,14 +354,14 @@ async def get_metadata_json(sha1_hash: str, filename: str):
 @router.delete("/remove/{sha1_hash}")
 async def remove_file(sha1_hash: str):
     """Remove a file and all its results by SHA1 hash."""
-    storage_dir = cnf.fs_workdir / sha1_hash
+    storage_dir = cnf.fs_workdir / sha1_hash / OUT
 
     if not storage_dir.exists():
         raise HTTPException(status_code=404, detail="File not found")
 
     try:
         shutil.rmtree(storage_dir)
-        return {"message": f"File with SHA1 hash {sha1_hash} removed successfully"}
+        return {"message": f"Results for {sha1_hash} deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error removing file: {str(e)}")
 

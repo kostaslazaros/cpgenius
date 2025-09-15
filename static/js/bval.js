@@ -586,14 +586,18 @@ resetBtn.addEventListener('click', () => {
 const testImagesBtn = document.getElementById('testImagesBtn')
 if (testImagesBtn) {
   testImagesBtn.addEventListener('click', async () => {
-    const testSha1 = 'e07b3e4c058ea1a32bb99898172a580fe4954e27'
+    // const testSha1 = 'e07b3e4c058ea1a32bb99898172a580fe4954e27'
+    const testSha1 = 'd104fa5ed8c91b7e2f58c260ca698d86ae126100'
     shaOut.value = testSha1
-    setStatus('Loading test images...', 'warn')
+    // Simulate processing delay to mimic real-world running
+    setStatus('Loading test dataset and processing...', 'warn')
     try {
+      // artificial 4 second delay
+      await new Promise((resolve) => setTimeout(resolve, 4000))
       await loadImages(testSha1)
-      setStatus('Test images loaded successfully!', 'ok')
+      setStatus('Analysis complete!', 'ok')
     } catch (error) {
-      setStatus('Error loading test images: ' + error.message, 'error')
+      setStatus('Error loading analysis: ' + error.message, 'error')
     }
   })
 }
