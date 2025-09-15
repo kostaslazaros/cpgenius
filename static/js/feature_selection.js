@@ -8,6 +8,8 @@ const URL_STATUS = `${URL_BASE}/status`
 const URL_RUN = `${URL_BASE}/run-algorithm`
 const URL_DELETE = `${URL_BASE}/remove`
 const URL_DOWNLOAD = `${URL_BASE}/download/`
+const URL_IMAGES = `${URL_BASE}/images`
+const URL_IMAGE = `${URL_BASE}/image`
 const fileInput = document.getElementById('fileInput')
 const sha1Out = document.getElementById('sha1Out')
 const goBtn = document.getElementById('goBtn')
@@ -440,13 +442,18 @@ const noResults = document.getElementById('noResults')
 const deleteSection = document.getElementById('deleteSection')
 const deleteBtn = document.getElementById('deleteBtn')
 
+// Image section elements
+const imagesSection = document.getElementById('imagesSection')
+const imageGallery = document.getElementById('imageGallery')
+const noImages = document.getElementById('noImages')
+
 function hideAnalysisSection() {
   analysisSection.classList.add('hidden')
   currentSha1Hash = null
   prognosisValues = []
   selectedPrognosisValues = []
   hideResultsSection()
-  // hideImagesSection()
+  hideImagesSection()
   hideDeleteSection()
 }
 
@@ -454,6 +461,18 @@ function hideResultsSection() {
   resultsSection.classList.add('hidden')
   resultsTableBody.innerHTML = ''
   resultsCards.innerHTML = ''
+}
+
+function hideImagesSection() {
+  if (imagesSection) {
+    imagesSection.classList.add('hidden')
+  }
+}
+
+function showImagesSection() {
+  if (imagesSection) {
+    imagesSection.classList.remove('hidden')
+  }
 }
 
 function hideDeleteSection() {
@@ -492,6 +511,139 @@ async function loadResults(sha1Hash) {
     console.error('Error loading results:', error)
     hideResultsSection()
   }
+}
+
+async function loadImages(sha1Hash) {
+  console.log('loadImages called with sha1Hash:', sha1Hash)
+  try {
+    const response = await fetch(`${URL_IMAGES}/${sha1Hash}`)
+    console.log('Images response status:', response.status)
+    if (!response.ok) {
+      if (response.status === 404) {
+        // No images yet, hide the section
+        console.log('No images found (404), hiding images section')
+        hideImagesSection()
+        return
+      }
+      throw new Error(`Failed to load images: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log('Images data received:', data)
+
+    if (data.images && data.images.length > 0) {
+      console.log('Rendering', data.images.length, 'images')
+      renderImageGallery(data.images)
+      showImagesSection()
+    } else {
+      console.log('No images in response, hiding images section')
+      hideImagesSection()
+    }
+  } catch (error) {
+    console.error('Error loading images:', error)
+    hideImagesSection()
+  }
+}
+
+function renderImageGallery(images) {
+  console.log('renderImageGallery called with:', images)
+  console.log('currentSha1Hash:', currentSha1Hash)
+  console.log('URL_IMAGE:', URL_IMAGE)
+
+  imageGallery.innerHTML = ''
+  noImages.style.display = 'none'
+
+  // Sort images by filename for consistent ordering
+  const sortedImages = [...images].sort((a, b) =>
+    a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' })
+  )
+
+  sortedImages.forEach((image) => {
+    const imageUrl = `${URL_IMAGE}/${currentSha1Hash}/${image.filename}`
+    console.log('Creating image card with URL:', imageUrl)
+
+    const imageCard = document.createElement('div')
+    imageCard.className = 'relative group'
+
+    imageCard.innerHTML = `
+      <div class="bg-slate-900/60 border border-magenta-700/40 rounded-xl p-4 shadow-[0_0_15px_rgba(236,72,153,0.2)] hover:border-magenta-500/60 hover:shadow-[0_0_25px_rgba(236,72,153,0.4)] transition-all duration-300">
+        <div class="aspect-[4/3] relative overflow-hidden rounded-lg mb-3 bg-slate-800">
+          <img
+            src="${imageUrl}"
+            alt="${image.filename}"
+            class="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-300"
+            onclick="openImageModal('${imageUrl}', '${image.filename}')"
+            loading="lazy"
+            onerror="console.error('Failed to load image:', this.src)"
+          />
+        </div>
+        <div class="space-y-2">
+          <h4 class="text-sm font-medium text-magenta-300 truncate" title="${image.filename}">
+            ${image.filename}
+          </h4>
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span>${(image.file_size / (1024 * 1024)).toFixed(2)} MB</span>
+            <a
+              href="${imageUrl}"
+              download="${image.filename}"
+              class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-magenta-700/40 hover:bg-magenta-600/60 rounded-md transition-colors duration-200"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Download
+            </a>
+          </div>
+        </div>
+      </div>
+    `
+
+    imageGallery.appendChild(imageCard)
+  })
+
+  if (images.length === 0) {
+    noImages.style.display = 'block'
+  }
+}
+
+function openImageModal(imageUrl, filename) {
+  // Create modal overlay
+  const modal = document.createElement('div')
+  modal.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4'
+  modal.onclick = () => modal.remove()
+
+  // Create modal content
+  const modalContent = document.createElement('div')
+  modalContent.className =
+    'bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl max-w-7xl max-h-[90vh] overflow-hidden'
+  modalContent.onclick = (e) => e.stopPropagation()
+
+  modalContent.innerHTML = `
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-200">${filename}</h3>
+        <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-200 transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="max-h-[70vh] overflow-auto">
+        <img src="${imageUrl}" alt="${filename}" class="w-full h-auto rounded-lg" />
+      </div>
+      <div class="mt-4 flex justify-end">
+        <a href="${imageUrl}" download="${filename}" class="inline-flex items-center gap-2 px-4 py-2 bg-magenta-600 hover:bg-magenta-700 rounded-lg text-white font-medium transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Download
+        </a>
+      </div>
+    </div>
+  `
+
+  modal.appendChild(modalContent)
+  document.body.appendChild(modal)
 }
 
 function renderResultsTable(results) {
@@ -828,7 +980,12 @@ async function loadAnalysisInterface(sha1Hash) {
     currentSha1Hash = sha1Hash
 
     // Load algorithms, prognosis values, existing results, and images in parallel
-    await Promise.all([loadAlgorithms(), loadPrognosisValues(sha1Hash), loadResults(sha1Hash)])
+    await Promise.all([
+      loadAlgorithms(),
+      loadPrognosisValues(sha1Hash),
+      loadResults(sha1Hash),
+      loadImages(sha1Hash),
+    ])
 
     showAnalysisSection()
     showDeleteSection()
@@ -899,6 +1056,7 @@ async function monitorFeatureSelectionTask(taskId) {
         setAnalysisStatus('ok', 'Feature selection completed! Results are ready for download.')
         // Reload results to show the new file
         await loadResults(currentSha1Hash)
+        await loadImages(currentSha1Hash)
         return
       } else if (data.status === 'FAILURE') {
         throw new Error(data.error || 'Feature selection failed')
