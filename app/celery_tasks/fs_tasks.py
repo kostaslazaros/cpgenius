@@ -14,11 +14,29 @@ from ..cpg2gene.cpg_gene_mapping import (
 )
 
 # from ..algorithms.selector import ALGORITHMS
-from ..services.get_algorithms import ALGORITHMS
+from ..services.get_algorithms import get_algorithm
 from .celery import app
 
 PROGNOSIS_COLUMN = cnf.prognosis_column_name
 OUT = cnf.fs_outdir_name
+
+
+def notify_progress(task, status: str, progress: int):
+    """Helper to update Celery task state."""
+    task.update_state(state="PROCESSING", meta={"status": status, "progress": progress})
+
+
+def notify_warning(task, warning: str, progress: int = 95):
+    """Helper to update Celery task state with a warning."""
+    task.update_state(
+        state="PROCESSING",
+        meta={
+            "status": f"Warning: Gene mapping failed - {warning}. Saving results without gene names.",
+            "progress": progress,
+            "warning": warning,
+            "gene_mapping_warning": warning,
+        },
+    )
 
 
 @app.task(bind=True)
@@ -36,37 +54,19 @@ def process_prognosis_algorithm(
     This is a heavy task that processes the data and generates feature rankings.
     """
     try:
-        # Get the algorithm function
-        algorithm_func = ALGORITHMS.get(algorithm)
-        if algorithm_func is None:
-            raise ValueError(
-                f"Unknown algorithm: {algorithm}. Available: {list(ALGORITHMS.keys())}"
-            )
+        algorithm_func = get_algorithm(algorithm)
 
-        try:
-            results = fs_wrapper(
-                algorithm=algorithm_func,
-                csv_path=file_path,
-                selected_prognosis=selected_prognosis,
-                parent=self,
-            )
-        except Exception as e:
-            raise ValueError(f"Error running {algorithm}: {str(e)}")
-
-        self.update_state(
-            state="PROCESSING", meta={"status": "Saving results", "progress": 90}
+        results = fs_wrapper(
+            algorithm=algorithm_func,
+            csv_path=file_path,
+            selected_prognosis=selected_prognosis,
+            parent=self,
         )
+        notify_progress(self, "Saving  results", 80)
 
         # Create output filename
-        selected_values_str = "_".join(selected_prognosis)
-        output_filename = f"{algorithm}_{selected_values_str}_results.csv"
-        save_path = Path(storage_dir) / OUT
-        save_path.mkdir(parents=True, exist_ok=True)
-        output_path = save_path / output_filename
-        json_path = save_path / f"{algorithm}_{selected_values_str}_results.json"
-        plot_path = (
-            save_path
-            / f"{algorithm}_{selected_values_str}_pca_{keep_features}_features.png"
+        output_filename, output_path, json_path, plot_path = generate_output_paths(
+            storage_dir, selected_prognosis, algorithm, keep_features
         )
 
         pca_plot = pca.pca_plot(
@@ -79,13 +79,10 @@ def process_prognosis_algorithm(
             n_components=2,
         )
         pca_plot.savefig(plot_path, dpi=300, bbox_inches="tight")
-        # print(results["feature_ranking"].head())
 
-        # Load metadata to get original filename
         metadata = get_metadata(Path(file_path).parent)
         illumina_type = metadata["detected_illumina_array_types"][0]
 
-        # Attempt gene mapping but handle failures gracefully so task doesn't fail
         gene_mapping_warning = None
         try:
             # guessed_type = guess_type(results["feature_ranking"])
@@ -97,15 +94,7 @@ def process_prognosis_algorithm(
         except ValueError as ge:
             # Record the warning and save raw feature ranking without gene names
             gene_mapping_warning = str(ge)
-            self.update_state(
-                state="PROCESSING",
-                meta={
-                    "status": f"Warning: Gene mapping failed - {gene_mapping_warning}. Saving results without gene names.",
-                    "progress": 95,
-                    "warning": gene_mapping_warning,
-                    "gene_mapping_warning": gene_mapping_warning,
-                },
-            )
+            notify_warning(self, gene_mapping_warning)
             results["feature_ranking"].to_csv(output_path, index=False)
 
         # Prepare final results
@@ -123,42 +112,64 @@ def process_prognosis_algorithm(
             "processing_time": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
         }
 
-        # Save metadata (include gene mapping warning if present)
         if gene_mapping_warning:
             final_results["gene_mapping_warning"] = gene_mapping_warning
 
-        with open(json_path, "w") as f:
-            json.dump(serialize_for_json(final_results), f, indent=2, default=str)
+        notify_success(self, gene_mapping_warning)
 
-        # Success state — include warning in meta if present so front-end can show it
-        success_meta = {"status": "Feature ranking completed", "progress": 100}
-        if gene_mapping_warning:
-            success_meta["warning"] = gene_mapping_warning
-            success_meta["gene_mapping_warning"] = gene_mapping_warning
-
-        self.update_state(state="SUCCESS", meta=success_meta)
-
+        write_json(json_path, final_results)
         return serialize_for_json(final_results)
 
     except Exception as exc:
-        error_msg = str(exc)
-        exc_type = type(exc).__name__
-
-        self.update_state(
-            state="FAILURE",
-            meta={
-                "status": f"Error processing algorithm: {error_msg}",
-                "error": error_msg,
-                "exc_type": exc_type,
-                "exc_message": error_msg,
-                "algorithm": algorithm,
-                "selected_prognosis": selected_prognosis,
-            },
+        notify_failure(
+            self, selected_prognosis, algorithm, str(exc), type(exc).__name__
         )
-
-        # Re-raise the original exception without conversion
-        # Let Celery handle the serialization
         raise
+
+
+def notify_failure(self, selected_prognosis, algorithm, error_msg, exc_type):
+    self.update_state(
+        state="FAILURE",
+        meta={
+            "status": f"Error processing algorithm: {error_msg}",
+            "error": error_msg,
+            "exc_type": exc_type,
+            "exc_message": error_msg,
+            "algorithm": algorithm,
+            "selected_prognosis": selected_prognosis,
+        },
+    )
+
+
+def notify_success(self, gene_mapping_warning):
+    success_meta = {"status": "Feature ranking completed", "progress": 100}
+    if gene_mapping_warning:
+        success_meta["warning"] = gene_mapping_warning
+        success_meta["gene_mapping_warning"] = gene_mapping_warning
+
+    self.update_state(state="SUCCESS", meta=success_meta)
+
+
+def write_json(json_path, final_results):
+    with open(json_path, "w") as f:
+        json.dump(serialize_for_json(final_results), f, indent=2, default=str)
+
+
+def generate_output_paths(storage_dir, selected_prognosis, algorithm, keep_features):
+    selected_values_str = "_".join(selected_prognosis)
+    output_filename = f"{algorithm}_{selected_values_str}_results.csv"
+    save_path = Path(storage_dir) / OUT
+
+    save_path.mkdir(parents=True, exist_ok=True)
+
+    output_path = save_path / output_filename
+    json_path = save_path / f"{algorithm}_{selected_values_str}_results.json"
+    plot_path = (
+        save_path
+        / f"{algorithm}_{selected_values_str}_pca_{keep_features}_features.png"
+    )
+
+    return output_filename, output_path, json_path, plot_path
 
 
 @app.task

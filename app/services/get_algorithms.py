@@ -40,3 +40,13 @@ def get_algorithms():
             }
         )
     return {"algorithms": algorithms}
+
+
+def get_algorithm(algorithm_name: str) -> Callable:
+    """Get the algorithm function by name."""
+    algorithm_func = ALGORITHMS.get(algorithm_name)
+    if algorithm_func is None:
+        raise ValueError(
+            f"Unknown algorithm: {algorithm_name}. Available: {list(ALGORITHMS.keys())}"
+        )
+    return algorithm_func
