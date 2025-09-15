@@ -162,6 +162,7 @@ async def run_algorithm(request: AlgorithmRequest):
             storage_dir=str(storage_dir),
             selected_prognosis=request.selected_prognosis_values,
             algorithm=request.algorithm.value,
+            keep_features=request.keep_features,
         )
 
         return AlgorithmResponse(

@@ -12,12 +12,14 @@ def test_pca_plot():
 
     df = pd.read_csv(path)
     features = [c for c in df.columns if c != "Prognosis"]
-    top_feats = features[:300]
+    top_feats = features[:200]
 
-    pca_plot(
+    fig = pca_plot(
         df,
         conditions=["Indolent", "Normal", "High_grade", "AVPC"],
-        features=top_feats,
-        output_path=".",
-        save_png=False,
+        selected_features=top_feats,
+        fs_algorithm_name="ANOVA F-test",
     )
+
+    # fig.savefig("test_pca_plot.png", dpi=300, bbox_inches="tight")
+    assert fig is not None

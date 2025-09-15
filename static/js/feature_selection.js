@@ -854,6 +854,7 @@ async function runFeatureSelection() {
       sha1_hash: currentSha1Hash,
       selected_prognosis_values: selectedPrognosisValues,
       algorithm: algorithmSelect.value,
+      keep_features: parseInt(featureSlider.value, 10),
     }
 
     setAnalysisStatus('warn', 'Starting feature selection analysis...')

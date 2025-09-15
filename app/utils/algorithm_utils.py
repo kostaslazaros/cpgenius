@@ -84,6 +84,7 @@ def fs_wrapper(
 
     return {
         "feature_ranking": feature_ranking,
+        "df": df,
         "all_prognosis": all_prognosis,
         "selected_prognosis": selected_prognosis,
         "total_samples": len(df),

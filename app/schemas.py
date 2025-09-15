@@ -38,6 +38,7 @@ class AlgorithmRequest(BaseModel):
     sha1_hash: str
     selected_prognosis_values: list[str]
     algorithm: Algorithm
+    keep_features: int = 100  # Optional: number of top features to keep
 
 
 class AlgorithmResponse(BaseModel):
