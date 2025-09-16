@@ -21,6 +21,11 @@ async def fsel(request: Request):
     return templates.TemplateResponse("feature_selection.html", {"request": request})
 
 
+@router.get("/gsel", response_class=HTMLResponse)
+async def gsel(request: Request):
+    return templates.TemplateResponse("genesel.html", {"request": request})
+
+
 @router.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})

@@ -568,7 +568,7 @@ function renderImageGallery(images) {
 
     imageCard.innerHTML = `
       <div class="bg-slate-900/60 border border-magenta-700/40 rounded-xl p-4 shadow-[0_0_15px_rgba(236,72,153,0.2)] hover:border-magenta-500/60 hover:shadow-[0_0_25px_rgba(236,72,153,0.4)] transition-all duration-300">
-        <div class="aspect-[4/3] relative overflow-hidden rounded-lg mb-3 bg-slate-800">
+        <div class="aspect-[4/3] relative overflow-hidden rounded-lg mb-3 bg-slate-50">
           <img
             src="${imageUrl}"
             alt="${image.filename}"

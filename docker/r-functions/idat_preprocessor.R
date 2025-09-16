@@ -71,12 +71,12 @@ xmax <- max(m_f, na.rm = TRUE)
 xlim <- c(0, xmax * 1.1)
 
 png("/output/mean_detection_pvals.png",
-  width = w_in, height = h_in, units = "in", res = DPI, type = "cairo"
+  width = w_in, height = h_in, units = "in", res = DPI, type = "cairo", bg="#f8fafc"
 )
 
 op <- par(no.readonly = TRUE)
 on.exit(par(op))
-par(mfrow = c(1, 1), mai = c(0.5, left_in, 0.35, 0.25))
+par(mfrow = c(1, 1), mai = c(0.5, left_in, 0.35, 0.25), bg="#f8fafc")
 
 barplot(m_f,
   horiz = TRUE,
@@ -91,7 +91,7 @@ barplot(m_f,
   cex.main = 1.0
 )
 
-legend("bottomright", legend = legend_lvls, fill = legend_cols, bg = "white", bty = "n")
+legend("bottomright", legend = legend_lvls, fill = legend_cols, bg = "#f8fafc", bty = "n")
 dev.off()
 
 # Control Strip Plot (for Bisulfite Conversion I and II)
@@ -156,7 +156,7 @@ mycontrolStripPlot <- function(rgSet,
 
 # Save the BISULFITE CONVERSION II plot at 300 dpi
 png("/output/bisulfite_conversionII.png",
-  width = 3.1 * w_in, height = 1.8 * h_in, units = "in", res = DPI, type = "cairo"
+  width = 3.1 * w_in, height = 1.8 * h_in, units = "in", res = DPI, type = "cairo", bg="#f8fafc"
 ) # drop type if not available
 mycontrolStripPlot(rgSet, "BISULFITE CONVERSION II")
 dev.off()
@@ -178,7 +178,7 @@ mSetSq <- preprocessFunnorm(rgSet)
 mSetRaw <- preprocessRaw(rgSet)
 
 png("/output/qc_plot.png",
-  width = 7, height = 5, units = "in", res = DPI, type = "cairo"
+  width = 7, height = 5, units = "in", res = DPI, type = "cairo", bg="#f8fafc"
 ) # drop type if not available
 
 # Draw the plot
@@ -216,7 +216,7 @@ grp <- factor(targets$Prognosis)
 cols <- colorRampPalette(brewer.pal(8, "Dark2"))(nlevels(grp))
 
 # Save at 300 dpi (7x5 inches -> 2100x1500 px)
-png("/output/beta_density.png", width = 7, height = 5, units = "in", res = DPI)
+png("/output/beta_density.png", width = 7, height = 5, units = "in", res = DPI, bg="#f8fafc")
 par(mfrow = c(1, 1), mar = c(5, 4, 2, 1))
 densityPlot(bVals,
   sampGroups = grp,
@@ -225,7 +225,7 @@ densityPlot(bVals,
   legend = FALSE,
   xlab = "BVals"
 )
-legend("top", legend = levels(grp), text.col = cols, bty = "n")
+legend("top", legend = levels(grp), text.col = cols, bty = "n", bg="#f8fafc")
 dev.off()
 
 # Remove values that are either <= 0 or >=1 in

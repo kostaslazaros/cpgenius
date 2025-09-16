@@ -71,13 +71,17 @@ dmp_volcano <- function(csv_path, condition1, condition2, delta_beta_thres, p_va
 
   DMPs$neg_log10_pval <- -log10(DMPs$P.Value)
 
-  # Biostatsquid theme
-  theme_set(theme_classic(base_size = 20) +
-                       theme(
-                         axis.title.y = element_text(face = "bold", margin = margin(0,20,0,0), size = rel(1.1), color = 'black'),
-                         axis.title.x = element_text(hjust = 0.5, face = "bold", margin = margin(20,0,0,0), size = rel(1.1), color = 'black'),
-                         plot.title = element_text(hjust = 0.5)
-                       ))
+  theme_set(
+    theme_classic(base_size = 20) +
+      theme(
+        axis.title.y = element_text(face = "bold", margin = margin(0,20,0,0), size = rel(1.1), color = 'black'),
+        axis.title.x = element_text(hjust = 0.5, face = "bold", margin = margin(20,0,0,0), size = rel(1.1), color = 'black'),
+        plot.title   = element_text(hjust = 0.5),
+        plot.background   = element_rect(fill = "#f8fafc", color = NA),
+        panel.background  = element_rect(fill = "#f8fafc", color = NA),
+        legend.background = element_rect(fill = "#f8fafc", color = NA)
+      )
+  )
 
   DMPs$diffexpressed <- "NO"
   DMPs$diffexpressed[DMPs$deltaBeta >= delta_beta_thres & DMPs$P.Value <= p_value_thres ] <- "UP"
@@ -115,7 +119,7 @@ dmp_volcano <- function(csv_path, condition1, condition2, delta_beta_thres, p_va
                                              size=6, segment.color='grey50', show.legend=FALSE)
 
   ggsave(file = png_name,
-                  plot = p_labeled, width = 11, height = 6, units = "in", dpi = 300, bg = "white")
+                  plot = p_labeled, width = 11, height = 6, units = "in", dpi = 300, bg = "#f8fafc")
 
   DMPs <- subset(DMPs, diffexpressed %in% c("UP", "DOWN"))
   DMPs <- cbind(Feature = rownames(DMPs), DMPs)

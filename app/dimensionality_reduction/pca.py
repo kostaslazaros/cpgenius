@@ -51,6 +51,11 @@ def pca_plot(
     # 6) Plot
     fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharex=True, sharey=True)
 
+    # 🔹 Set figure and axes background
+    fig.patch.set_facecolor("#f8fafc")
+    for ax in axes:
+        ax.set_facecolor("#f8fafc")
+
     # Left: full features
     for label in labels:
         mask = principalDf_2d_full["Prognosis"] == label
@@ -90,15 +95,17 @@ def pca_plot(
 
     # Common legend outside plot
     handles, labels = axes[0].get_legend_handles_labels()
-    # fig.legend(handles, labels, loc="center right", bbox_to_anchor=(1.12, 0.5))
-    fig.legend(
+    legend = fig.legend(
         handles,
         labels,
         title="Prognosis",
         loc="lower center",
         ncol=len(labels),
-        frameon=False,
+        frameon=True,
     )
-    plt.tight_layout(rect=[0, 0.05, 1, 1])
+    # 🔹 Match legend background
+    legend.get_frame().set_facecolor("#f8fafc")
+    legend.get_frame().set_edgecolor("none")
 
+    plt.tight_layout(rect=[0, 0.05, 1, 1])
     return fig
