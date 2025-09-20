@@ -214,3 +214,5 @@ flowchart TD
 ```
 
 [Link text Here](/documentation/overview)
+
+![alt text](/static/images/logo.png)
