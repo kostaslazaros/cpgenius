@@ -36,6 +36,11 @@ async def hashtest(request: Request):
     return templates.TemplateResponse("sha_1_file_tester.html", {"request": request})
 
 
+@router.get("/help", response_class=HTMLResponse)
+async def help(request: Request):
+    return templates.TemplateResponse("help.html", {"request": request})
+
+
 @router.get("/dmp", response_class=HTMLResponse)
 async def under_development(request: Request):
     return templates.TemplateResponse("dmp.html", {"request": request})
@@ -43,4 +48,4 @@ async def under_development(request: Request):
 
 @router.get("/documentation", response_class=HTMLResponse)
 async def documentation(request: Request):
-    return templates.TemplateResponse("under_development.html", {"request": request})
+    return templates.TemplateResponse("doc.html", {"request": request})

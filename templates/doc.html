@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CpGenius — Documentation</title>
+  <link rel="stylesheet" href="/static/css/output.css">
+</head>
+
+<body class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+  <div class="w-full max-w-7xl mx-auto p-6">
+    <header class="mb-6 flex items-center justify-between">
+      <h1
+        class="text-2xl sm:text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]">
+        <img src="/static/images/logo.png" alt="CpGenius Favicon" class="inline-block w-8 h-8 align-middle mr-2" />
+        Documentation
+      </h1>
+      <div class="flex items-center gap-3">
+        <a href="/"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-cyan-700 hover:border-cyan-500 bg-cyan-800/40 text-cyan-200 transition-all duration-200">Home</a>
+      </div>
+    </header>
+
+    <div
+      class="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur shadow-[0_0_40px_rgba(168,85,247,0.15)] p-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <!-- Sidebar / TOC -->
+        <aside class="md:col-span-1">
+          <div class="sticky top-6">
+            <h2 class="text-lg font-semibold text-slate-200 mb-3">Contents</h2>
+            <nav class="space-y-2 text-sm text-slate-300">
+              <a href="#overview" class="block hover:text-cyan-300">Overview</a>
+              <a href="#getting-started" class="block hover:text-cyan-300">Getting Started</a>
+              <a href="#api" class="block hover:text-cyan-300">API</a>
+              <a href="#architecture" class="block hover:text-cyan-300">Architecture</a>
+              <a href="#faq" class="block hover:text-cyan-300">FAQ</a>
+            </nav>
+          </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="md:col-span-3 space-y-8">
+          <section id="overview">
+            <h3 class="text-xl font-semibold text-slate-100 mb-2">Overview</h3>
+            <p class="text-slate-300">CpGenius is a web tool for feature selection and processing of methylation data.
+              This documentation provides guides for developers and users to operate, extend and deploy the application.
+            </p>
+          </section>
+
+          <section id="getting-started">
+            <h3 class="text-xl font-semibold text-slate-100 mb-2">Getting Started</h3>
+            <p class="text-slate-300">Quick start instructions:</p>
+            <ol class="list-decimal list-inside text-slate-300 space-y-2">
+              <li>Install project dependencies from `pyproject.toml`.</li>
+              <li>Run the FastAPI dev server: <code>uv run uvicorn app.start_fastapi:app --reload</code>.</li>
+              <li>Open the browser at <code>http://localhost:8001/</code> and navigate to features.</li>
+            </ol>
+          </section>
+
+          <section id="api">
+            <h3 class="text-xl font-semibold text-slate-100 mb-2">API</h3>
+            <p class="text-slate-300">API endpoints and usage:</p>
+            <ul class="list-disc list-inside text-slate-300 space-y-2">
+              <li><code>/fs/upload</code> — Upload a CSV for feature selection.</li>
+              <li><code>/fs/run-algorithm</code> — Trigger feature selection run.</li>
+              <li>See <code>docs/FILE_UPLOAD_API.md</code> and <code>docs/PROGNOSIS_API.md</code> for detailed examples.
+              </li>
+            </ul>
+          </section>
+
+          <section id="architecture">
+            <h3 class="text-xl font-semibold text-slate-100 mb-2">Architecture</h3>
+            <p class="text-slate-300">High-level architecture and components:</p>
+            <p class="text-slate-400">Refer to <code>docs/ARCHITECTURE.md</code> for diagrams and component
+              interactions.</p>
+          </section>
+
+          <section id="faq">
+            <h3 class="text-xl font-semibold text-slate-100 mb-2">FAQ</h3>
+            <div class="space-y-3 text-slate-300">
+              <details class="bg-slate-800/30 p-3 rounded-lg">
+                <summary class="cursor-pointer font-medium">How do I run tests?</summary>
+                <p class="mt-2">Run the test suite with: <code>uv run pytest -vs</code></p>
+              </details>
+              <details class="bg-slate-800/30 p-3 rounded-lg">
+                <summary class="cursor-pointer font-medium">Where are the static assets?</summary>
+                <p class="mt-2">Static assets are under the <code>static/</code> folder.</p>
+              </details>
+            </div>
+          </section>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
