@@ -1,4 +1,4 @@
-# CpGenius Application Architecture Overview
+# Application Architecture Overview
 
 ## System Architecture
 
@@ -189,6 +189,28 @@ This architecture provides a robust, scalable platform for DNA methylation analy
 
 ```bash
 sudo apt update
+```
+
+```mermaid
+flowchart LR
+    USR(user) --> IDF(Idat files)
+    IDF --> IDAT[preprocessing]
+    IDAT --> IDATB(bval_data.csv)
+    USR --> FSF(bval_data.csv)
+    FSF --> FS[Feature Selection]
+    IDATB --> FS
+    FS --> DUO(Prognosis 2)
+    DUO --> DMP[dmp analysis]
+    DMP --> DMPE(csv)
+    DMPE --> ENR[Enrichment]
+    FS --> ALG(Algorithm)
+    FS --> TAG(Prognosis 2-all)
+    ALG --> ML[ml analysis]
+    TAG --> ML
+    ML --> MLE(csv)
+    MLE --> ENR
+    USR --> RE(csv)
+    RE --> ENR
 ```
 
 [Link text Here](/documentation/overview)

@@ -11,6 +11,66 @@
   <link rel="stylesheet" href="/static/vendor/markdown-dark.css">
   <!-- Highlight.js theme - local vendor wrapper -->
   <link rel="stylesheet" href="/static/vendor/hljs-dark.css">
+  <!-- Mermaid SVG visibility fixes for dark theme -->
+  <style>
+    /* Ensure mermaid SVG paths and shapes are visible on dark backgrounds */
+    .mermaid svg {
+      width: 100% !important;
+      height: auto !important;
+    }
+
+    /* Neon styling for lines */
+    .mermaid svg path,
+    .mermaid svg polyline,
+    .mermaid svg polygon,
+    .mermaid svg line,
+    .mermaid svg circle,
+    .mermaid svg rect {
+      stroke: #7ef0ff !important;
+      /* neon cyan */
+      stroke-width: 1.6 !important;
+      fill: none !important;
+      opacity: 0.98 !important;
+      filter: drop-shadow(0 0 6px rgba(126, 240, 255, 0.35)) drop-shadow(0 0 10px rgba(189, 79, 255, 0.08));
+    }
+
+    /* Node backgrounds and stroke mix to give a subtle neon card look */
+    .mermaid svg .node rect,
+    .mermaid svg .node ellipse,
+    .mermaid svg .node circle {
+      fill: linear-gradient(#0f172a, #0b1220) !important;
+      fill: rgba(10, 12, 16, 0.18) !important;
+      stroke: #7ef0ff !important;
+      stroke-width: 1.4 !important;
+      filter: drop-shadow(0 0 6px rgba(126, 240, 255, 0.18));
+    }
+
+    /* Force fuchsia text for all Mermaid textual elements using high-specificity selectors */
+    .mermaid svg text,
+    .mermaid svg tspan,
+    .mermaid svg .label,
+    .mermaid svg .edgeLabel text,
+    .mermaid svg .node text,
+    .mermaid svg foreignObject * {
+      color: #ff4fcf !important;
+      fill: #ff4fcf !important;
+      /* svg text */
+      stroke: #6b0036 !important;
+      /* subtle dark stroke for contrast */
+      font-weight: 800 !important;
+      text-shadow: 0 0 10px rgba(255, 79, 207, 0.45), 0 0 18px rgba(189, 79, 255, 0.12) !important;
+    }
+
+    /* Ensure edge labels also get the same fuchsia */
+    .mermaid svg .edgeLabel text {
+      fill: #ff4fcf !important;
+    }
+
+    /* Hover emphasis (enhance glow on hover) */
+    .mermaid svg :is(path, polyline, line):hover {
+      filter: drop-shadow(0 0 14px rgba(126, 240, 255, 0.55));
+    }
+  </style>
 </head>
 
 <body class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
@@ -102,10 +162,54 @@
 </html>
 
 <!-- Highlight.js loader (local wrapper) -->
+<!-- Mermaid loader (local wrapper) -->
+<script src="/static/vendor/mermaid-loader.js"></script>
+<!-- Highlight.js loader (local wrapper) -->
 <script src="/static/vendor/hljs-loader.js"></script>
 <script>
   // Initialize highlight.js when available, plus copy buttons and smooth scrolling
   document.addEventListener('DOMContentLoaded', () => {
+    // Convert fenced ```mermaid code blocks into <div class="mermaid">...</div>.
+    // Markdown renderers sometimes wrap code blocks in containers like div.codehilite > pre > code
+    // or div.highlight > pre > code. We'll check a few common patterns.
+    (function convertMermaid() {
+      // Helper to replace a block element with mermaid div
+      function replaceWithMermaid(container, text) {
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = text;
+        if (container && container.parentElement) container.parentElement.replaceChild(mermaidDiv, container);
+      }
+
+      // 1) <pre><code class="language-mermaid">...
+      document.querySelectorAll('pre code').forEach((el) => {
+        try {
+          const cls = el.className || '';
+          if (/language-?mermaid/.test(cls)) {
+            const pre = el.closest('pre') || el.parentElement;
+            replaceWithMermaid(pre, el.textContent || '');
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      });
+
+      // 2) codehilite/highlight wrappers e.g. div.codehilite > pre > code or div.highlight > pre > code
+      document.querySelectorAll('div.codehilite, div.highlight').forEach((wrapper) => {
+        try {
+          const code = wrapper.querySelector('pre code, pre');
+          if (!code) return;
+          const text = (code.textContent || '').trim();
+          // If the first line looks like a mermaid directive or contains mermaid graph keywords, treat as mermaid
+          if (/^%%?mermaid|graph\s|flowchart|sequenceDiagram|classDiagram|stateDiagram|gantt/i.test(text)) {
+            replaceWithMermaid(wrapper, text);
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      });
+    })();
+
     const whenHljsReady = new Promise((resolve) => {
       let attempts = 0
       const t = setInterval(() => {
@@ -125,6 +229,7 @@
       if (hljs) {
         document.querySelectorAll('pre code').forEach((el) => {
           try {
+            // By this point mermaid blocks have been converted, so highlight only real code blocks
             hljs.highlightElement(el)
           } catch (e) {
             /* ignore */
@@ -166,6 +271,33 @@
           if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
         })
       })
+    })
+
+    // Initialize Mermaid when available (render any .mermaid containers)
+    const whenMermaidReady = new Promise((resolve) => {
+      let attempts = 0
+      const t = setInterval(() => {
+        if (window.mermaid) {
+          clearInterval(t)
+          resolve(window.mermaid)
+        }
+        attempts++
+        if (attempts > 50) {
+          clearInterval(t)
+          resolve(null)
+        }
+      }, 100)
+    })
+
+    whenMermaidReady.then((mermaid) => {
+      if (mermaid) {
+        try {
+          // Render any mermaid blocks we created earlier
+          mermaid.init(undefined, document.querySelectorAll('.mermaid'))
+        } catch (e) {
+          console.warn('Mermaid rendering failed', e)
+        }
+      }
     })
   })
 </script>

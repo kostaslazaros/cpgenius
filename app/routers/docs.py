@@ -39,9 +39,10 @@ async def docs_page(request: Request, page_name: str):
         raise HTTPException(500, detail=f"Failed to read documentation file: {e}")
 
     # Use Markdown object to extract generated TOC HTML from the 'toc' extension
+    # Configure Markdown: disable the toc permalink so headings don't get a pilcrow (¶)
     md = markdown.Markdown(
         extensions=["fenced_code", "tables", "toc", "codehilite"],
-        extension_configs={"toc": {"permalink": True}},
+        extension_configs={"toc": {"permalink": False}},
     )
     html = md.convert(text)
     toc_html = getattr(md, "toc", "")
