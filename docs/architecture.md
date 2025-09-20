@@ -192,7 +192,7 @@ sudo apt update
 ```
 
 ```mermaid
-flowchart LR
+flowchart TD
     USR(user) --> IDF(Idat files)
     IDF --> IDAT[preprocessing]
     IDAT --> IDATB(bval_data.csv)
