@@ -75,10 +75,8 @@
               <span id="folderFileCount" class="text-fuchsia-300 font-mono"></span>
             </div>
           </div>
-          <p class="text-xs text-slate-400 mt-2">
-            Select a folder containing <code>.idat</code> or <code>.csv</code> files. A bundle SHA-1 is computed
-            locally.
-            Nothing is uploaded unless the bundle is missing on the server.
+          <p class="text-sm text-slate-400 mt-2">
+            Select a folder that contains the raw <code>.idat</code> files along with a metadata file named SampleSheet.csv. The SampleSheet should include key details for each sample, such as GSM_ID, Sample_Name, Sentrix_ID, Sentrix_Position, and Prognosis. The Prognosis column represents the target variable, distinguishing control (healthy) samples from those in different disease states (e.g., mild, moderate, or aggressive). A toy example dataset (idat_example) is available as a compressed ZIP file and can be downloaded from the following <a href="https://e.pcloud.link/publink/show?code=kZoBXUZEsNKAMbiuV738sUrztmovhrjyE27" class="text-yellow-600">link</a>. Once downloaded unzip and select from the "Choose Files" button.
           </p>
         </div>
 
