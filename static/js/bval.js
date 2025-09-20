@@ -593,7 +593,7 @@ if (testImagesBtn) {
     setStatus('Loading test dataset and processing...', 'warn')
     try {
       // artificial 4 second delay
-      await new Promise((resolve) => setTimeout(resolve, 4000))
+      await new Promise((resolve) => setTimeout(resolve, 1))
       await loadImages(testSha1)
       setStatus('Analysis complete!', 'ok')
     } catch (error) {

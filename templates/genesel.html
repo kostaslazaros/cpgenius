@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CpGenius</title>
+  <title>CpGenius - Biomarker Identification</title>
   <link rel="stylesheet" href="/static/css/output.css">
 </head>
 
@@ -21,12 +21,16 @@
             <h1
               class="text-3xl sm:text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]">
 
-              CpGenius
+              Biomarker Identification
             </h1>
             <p class="text-slate-400 mt-2 text-xl">Choose an option to get started.</p>
+            
           </div>
+          
         </div>
       </h1>
+
+      
 
       <div class="flex items-center gap-3">
         <!-- Home Button -->
@@ -43,6 +47,10 @@
       </div>
 
     </header>
+
+        <p class="text-sm text-slate-400 mt-2">The input should be provided as a <code> .csv </code> file containing the beta values from the experiment. Each row should correspond to a sample, while each column should represent a CpG site or probe. In addition, the dataset must include a column named Prognosis, which specifies the target variable. For reference, you can download a toy example dataset (bval_data) from the following <a href="https://e.pcloud.link/publink/show?code=kZoBXUZEsNKAMbiuV738sUrztmovhrjyE27" class="text-yellow-600">link</a>. Once downloaded select the .csv file from the "Choose File" button (Either in Feature Selection or DMP Analysis).
+          </p>
+          <br>
 
     <section class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       <!-- Option: Feature Selection -->
