@@ -46,6 +46,6 @@ async def under_development(request: Request):
     return templates.TemplateResponse("dmp.html", {"request": request})
 
 
-@router.get("/documentation", response_class=HTMLResponse)
-async def documentation(request: Request):
-    return templates.TemplateResponse("doc.html", {"request": request})
+# @router.get("/documentation", response_class=HTMLResponse)
+# async def documentation(request: Request):
+#     return templates.TemplateResponse("doc.html", {"request": request})

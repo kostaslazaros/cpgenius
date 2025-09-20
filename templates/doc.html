@@ -7,6 +7,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CpGenius — Documentation</title>
   <link rel="stylesheet" href="/static/css/output.css">
+  <!-- Markdown styling (GitHub-like, dark) - local vendor wrapper -->
+  <link rel="stylesheet" href="/static/vendor/markdown-dark.css">
+  <!-- Highlight.js theme - local vendor wrapper -->
+  <link rel="stylesheet" href="/static/vendor/hljs-dark.css">
 </head>
 
 <body class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
@@ -15,7 +19,7 @@
       <h1
         class="text-2xl sm:text-4xl font-semibold tracking-tight bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]">
         <img src="/static/images/logo.png" alt="CpGenius Favicon" class="inline-block w-8 h-8 align-middle mr-2" />
-        Documentation
+        {{ title | default('Documentation') }}
       </h1>
       <div class="flex items-center gap-3">
         <a href="/"
@@ -31,11 +35,43 @@
           <div class="sticky top-6">
             <h2 class="text-lg font-semibold text-slate-200 mb-3">Contents</h2>
             <nav class="space-y-2 text-sm text-slate-300">
-              <a href="#overview" class="block hover:text-cyan-300">Overview</a>
-              <a href="#getting-started" class="block hover:text-cyan-300">Getting Started</a>
-              <a href="#api" class="block hover:text-cyan-300">API</a>
-              <a href="#architecture" class="block hover:text-cyan-300">Architecture</a>
-              <a href="#faq" class="block hover:text-cyan-300">FAQ</a>
+              {# If the router provided a `pages` list (scanned from /docs), render it as the primary index #}
+              {% if pages %}
+              <ul class="space-y-1">
+                {% for p in pages %}
+                <li>
+                  <a href="/documentation/{{ p.slug }}"
+                    class="block px-2 py-1 rounded-lg transition-colors duration-150 {% if current_page == p.slug %}bg-slate-800 text-cyan-300 font-semibold{% else %}hover:bg-slate-800/40 hover:text-cyan-300{% endif %}">
+                    {{ p.title }}
+                  </a>
+                </li>
+                {% endfor %}
+              </ul>
+
+              {# If a per-page TOC was generated, show it below the page list for quick navigation within the page #}
+              {% if toc %}
+              <div class="mt-4 text-xs text-slate-400">
+                <h3 class="text-sm font-medium text-slate-200 mb-2">This page</h3>
+                <div class="markdown-body text-xs">
+                  {{ toc | safe }}
+                </div>
+              </div>
+              {% endif %}
+
+              {% else %}
+              {# Fallback: show the raw TOC if pages unavailable, else a static list #}
+              {% if toc %}
+              <div class="markdown-body">
+                {{ toc | safe }}
+              </div>
+              {% else %}
+              <a href="/documentation/overview" class="block hover:text-cyan-300">Overview</a>
+              <a href="/documentation/getting-started" class="block hover:text-cyan-300">Getting Started</a>
+              <a href="/documentation/api" class="block hover:text-cyan-300">API</a>
+              <a href="/documentation/architecture" class="block hover:text-cyan-300">Architecture</a>
+              <a href="/documentation/faq" class="block hover:text-cyan-300">FAQ</a>
+              {% endif %}
+              {% endif %}
             </nav>
           </div>
         </aside>
@@ -43,59 +79,93 @@
         <!-- Main content -->
         <main class="md:col-span-3 space-y-8">
           <section id="overview">
-            <h3 class="text-xl font-semibold text-slate-100 mb-2">Overview</h3>
-            <p class="text-slate-300">CpGenius is a web tool for feature selection and processing of methylation data.
-              This documentation provides guides for developers and users to operate, extend and deploy the application.
-            </p>
-          </section>
 
-          <section id="getting-started">
-            <h3 class="text-xl font-semibold text-slate-100 mb-2">Getting Started</h3>
-            <p class="text-slate-300">Quick start instructions:</p>
-            <ol class="list-decimal list-inside text-slate-300 space-y-2">
-              <li>Install project dependencies from `pyproject.toml`.</li>
-              <li>Run the FastAPI dev server: <code>uv run uvicorn app.start_fastapi:app --reload</code>.</li>
-              <li>Open the browser at <code>http://localhost:8001/</code> and navigate to features.</li>
-            </ol>
-          </section>
-
-          <section id="api">
-            <h3 class="text-xl font-semibold text-slate-100 mb-2">API</h3>
-            <p class="text-slate-300">API endpoints and usage:</p>
-            <ul class="list-disc list-inside text-slate-300 space-y-2">
-              <li><code>/fs/upload</code> — Upload a CSV for feature selection.</li>
-              <li><code>/fs/run-algorithm</code> — Trigger feature selection run.</li>
-              <li>See <code>docs/FILE_UPLOAD_API.md</code> and <code>docs/PROGNOSIS_API.md</code> for detailed examples.
-              </li>
-            </ul>
-          </section>
-
-          <section id="architecture">
-            <h3 class="text-xl font-semibold text-slate-100 mb-2">Architecture</h3>
-            <p class="text-slate-300">High-level architecture and components:</p>
-            <p class="text-slate-400">Refer to <code>docs/ARCHITECTURE.md</code> for diagrams and component
-              interactions.</p>
-          </section>
-
-          <section id="faq">
-            <h3 class="text-xl font-semibold text-slate-100 mb-2">FAQ</h3>
-            <div class="space-y-3 text-slate-300">
-              <details class="bg-slate-800/30 p-3 rounded-lg">
-                <summary class="cursor-pointer font-medium">How do I run tests?</summary>
-                <p class="mt-2">Run the test suite with: <code>uv run pytest -vs</code></p>
-              </details>
-              <details class="bg-slate-800/30 p-3 rounded-lg">
-                <summary class="cursor-pointer font-medium">Where are the static assets?</summary>
-                <p class="mt-2">Static assets are under the <code>static/</code> folder.</p>
-              </details>
+            <!-- Main content: server-rendered HTML from markdown will be injected here -->
+            <div class="md:col-span-3 space-y-8">
+              {% if content %}
+              <!-- markdown-body provides GitHub-like styling; we add some padding and rounded backdrop -->
+              <article class="markdown-body bg-slate-900/60 p-6 rounded-lg shadow-sm overflow-auto">
+                {{ content | safe }}
+              </article>
+              {% else %}
+              <section>
+                <h3 class="text-xl font-semibold text-slate-100 mb-2">No documentation available</h3>
+                <p class="text-slate-300">No documentation content was provided for this page.</p>
+              </section>
+              {% endif %}
             </div>
           </section>
-
         </main>
-      </div>
-    </div>
-  </div>
 
 </body>
 
 </html>
+
+<!-- Highlight.js loader (local wrapper) -->
+<script src="/static/vendor/hljs-loader.js"></script>
+<script>
+  // Initialize highlight.js when available, plus copy buttons and smooth scrolling
+  document.addEventListener('DOMContentLoaded', () => {
+    const whenHljsReady = new Promise((resolve) => {
+      let attempts = 0
+      const t = setInterval(() => {
+        if (window.hljs) {
+          clearInterval(t)
+          resolve(window.hljs)
+        }
+        attempts++
+        if (attempts > 50) {
+          clearInterval(t)
+          resolve(null)
+        }
+      }, 100)
+    })
+
+    whenHljsReady.then((hljs) => {
+      if (hljs) {
+        document.querySelectorAll('pre code').forEach((el) => {
+          try {
+            hljs.highlightElement(el)
+          } catch (e) {
+            /* ignore */
+          }
+
+          // Add copy button
+          const btn = document.createElement('button')
+          btn.className = 'ml-2 px-2 py-1 text-xs rounded bg-slate-800/40 hover:bg-slate-700/50 text-slate-200'
+          btn.type = 'button'
+          btn.innerText = 'Copy'
+          btn.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(el.innerText)
+              btn.innerText = 'Copied'
+              setTimeout(() => (btn.innerText = 'Copy'), 1500)
+            } catch (err) {
+              console.error('Copy failed', err)
+            }
+          })
+
+          const wrapper = el.parentElement
+          if (wrapper && !wrapper.querySelector('.copy-btn')) {
+            btn.classList.add('copy-btn')
+            wrapper.style.position = 'relative'
+            btn.style.position = 'absolute'
+            btn.style.top = '8px'
+            btn.style.right = '8px'
+            wrapper.appendChild(btn)
+          }
+        })
+      }
+
+      // Smooth scrolling for sidebar TOC links — handle both local TOC anchors and sidebar links
+      document.querySelectorAll('a[href^="#"]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault()
+          const id = a.getAttribute('href').slice(1)
+          const target = document.getElementById(id)
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })
+      })
+    })
+  })
+</script>

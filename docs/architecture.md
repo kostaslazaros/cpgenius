@@ -186,3 +186,9 @@ uv run uvicorn app.start_fastapi:app --host 0.0.0.0 --port 8001 --reload
 - **Output**: PNG visualizations, CSV results, ZIP archives
 
 This architecture provides a robust, scalable platform for DNA methylation analysis with a modern web interface and powerful machine learning capabilities.
+
+```bash
+sudo apt update
+```
+
+[Link text Here](/documentation/overview)
