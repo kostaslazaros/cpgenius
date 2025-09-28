@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Run Fastapi server",
+      "label": "Fastapi server",
       "type": "shell",
       "command": "uv run uvicorn app.start_fastapi:app --host 0.0.0.0 --port 8001 --reload",
       "group": {
@@ -19,7 +19,7 @@
       }
     },
     {
-      "label": "Run Celery Worker",
+      "label": "Celery Worker",
       "type": "shell",
       "command": "uv run celery -A app.celery_tasks worker -l INFO",
       "group": {
@@ -34,7 +34,7 @@
       }
     },
     {
-      "label": "Run Tailwind cli watcher",
+      "label": "Tailwind cli watcher",
       "type": "shell",
       "command": "npx @tailwindcss/cli -i input.css -o ./static/css/output.css --watch",
       "group": {
@@ -49,7 +49,7 @@
       }
     },
     {
-      "label": "Run pytest",
+      "label": "test with pytest",
       "type": "shell",
       "command": "uv run pytest -vs",
       "group": {
@@ -64,12 +64,12 @@
       }
     },
     {
-      "label": "Start All Development Services",
+      "label": "All Development Services",
       "dependsOrder": "parallel",
       "dependsOn": [
-        "Run Fastapi server",
-        "Run Celery Worker",
-        "Run Tailwind cli watcher"
+        "Celery Worker",
+        "Tailwind cli watcher",
+        "Fastapi server"
       ],
       "group": {
         "kind": "build",
@@ -86,8 +86,8 @@
       "label": "Test and Start Services",
       "dependsOrder": "sequence",
       "dependsOn": [
-        "Run pytest",
-        "Start All Development Services"
+        "test with pytest",
+        "All Development Services"
       ],
       "group": {
         "kind": "build",
