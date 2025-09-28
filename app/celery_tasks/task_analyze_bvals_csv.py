@@ -37,7 +37,7 @@ def task_analyze_bvals_csv(self, file_path: str, sha1_hash: str, storage_dir: st
 
         # Read CSV file
         try:
-            df = pd.read_csv(file_path_obj)
+            df = pd.read_csv(file_path_obj, index_col=0)
         except Exception as e:
             raise ValueError(f"Error reading CSV file: {str(e)}")
 
@@ -85,6 +85,8 @@ def task_analyze_bvals_csv(self, file_path: str, sha1_hash: str, storage_dir: st
             state="PROCESSING",
             meta={"status": "Guessing Illumina array type", "progress": 30},
         )
+
+        # print(df.head())
 
         illumina_types = guess_illumina_array_type_pd(
             df.index[1:] if len(df) > 1 else pd.Index([])
