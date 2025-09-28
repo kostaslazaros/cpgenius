@@ -1,6 +1,6 @@
-# CpGenius Documentation
+# CpGene Documentation
 
-Welcome to the CpGenius documentation. This is a sample page rendered from Markdown.
+Welcome to the CpGene documentation. This is a sample page rendered from Markdown.
 
 ## Getting started
 

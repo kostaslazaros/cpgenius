@@ -1,5 +1,5 @@
 [project]
-name = "cpgenius"
+name = "cpgene"
 version = "0.1.10"
 description = "Bioinformatics with good looks :-)"
 readme = "README.md"

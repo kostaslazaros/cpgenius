@@ -13,7 +13,7 @@ check()
 
 
 app = FastAPI(
-    title="cpgenius API",
+    title="cpgene API",
     description="API for varius bioinformatics tasks",
     version="1.0.1",
 )

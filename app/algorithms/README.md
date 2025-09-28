@@ -1,6 +1,6 @@
 # Algorithms Directory
 
-This folder contains algorithm implementations used in the `cpgenius` application.
+This folder contains algorithm implementations used in the `cpgene` application.
 
 ## Developer instructions
 

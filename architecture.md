@@ -1,6 +1,6 @@
-# CpGenius – Architecture Diagrams
+# CpGene – Architecture Diagrams
 
-This document provides ready-to-embed Mermaid diagrams for CpGenius. Paste this file into `docs/architecture.md` in your repo to render on GitHub.
+This document provides ready-to-embed Mermaid diagrams for CpGene. Paste this file into `docs/architecture.md` in your repo to render on GitHub.
 
 ## 1) System Overview
 
@@ -10,7 +10,7 @@ graph TD
   U[User]
 
   %% App boundary
-  subgraph APP[cpgenius application]
+  subgraph APP[cpgene application]
     FAPI[FastAPI app<br/>`app.start_fastapi:app`]
     CEL[Celery Worker<br/>`app.celery_tasks`]
     TEMPL[Templates]

@@ -2,7 +2,7 @@
 
 ## System Architecture
 
-CpGenius is a **DNA Methylation Analysis Platform** built with a modern microservices architecture using FastAPI, Celery, Redis, and Docker. The system processes IDAT files (Illumina methylation arrays) and CSV data to perform comprehensive feature selection and machine learning analysis.
+CpGene is a **DNA Methylation Analysis Platform** built with a modern microservices architecture using FastAPI, Celery, Redis, and Docker. The system processes IDAT files (Illumina methylation arrays) and CSV data to perform comprehensive feature selection and machine learning analysis.
 
 ## Architecture Components
 

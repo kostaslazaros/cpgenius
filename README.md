@@ -1,4 +1,4 @@
-# CpGenius
+# CpGene
 
 ## Features
 
