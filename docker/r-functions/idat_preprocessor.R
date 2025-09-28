@@ -240,8 +240,12 @@ bVals_df_fin <- t(bVals_df)
 bVals_df_fin <- as.data.frame(bVals_df_fin)
 rownames(targets) <- targets$GSM_ID
 bVals_df_fin$Prognosis <- targets[rownames(bVals_df_fin), "Prognosis"]
+bVals_df_fin <- bVals_df_fin[, c("Prognosis", setdiff(names(bVals_df_fin), "Prognosis"))]
+rm(bVals_df)
+bVals_csv <- t(bVals_df_fin)
+bVals_csv <- as.data.frame(bVals_csv)
 
-write.csv(bVals_df_fin, file = "/output/bval_data.csv", row.names = FALSE)
+write.csv(bVals_csv, file = "/output/bval_data.csv", row.names = TRUE)
 
 if (array_type == "IlluminaHumanMethylationEPICv2") {
   arr_typ <- "epicv2"

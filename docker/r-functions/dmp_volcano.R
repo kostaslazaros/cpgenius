@@ -34,8 +34,11 @@ dmp_volcano <- function(csv_path, condition1, condition2, delta_beta_thres, p_va
   # Read beta-values matrix from disk
   bvals <- read.csv(file=csv_path,
                     header=TRUE,
-                    stringsAsFactors=TRUE)
+                    stringsAsFactors=TRUE,
+                    row.names=1)
 
+  bvals <- t(bvals)
+  bvals <- as.data.frame(bvals)
   bvals <- bvals[bvals$Prognosis %in% comp_vec, , drop = FALSE]
 
   tag_value_counts <- bvals %>% count(Prognosis)
@@ -47,6 +50,7 @@ dmp_volcano <- function(csv_path, condition1, condition2, delta_beta_thres, p_va
   rownames(bvals) <- make.unique(as.character(bvals$Prognosis))
   bvals$Prognosis <- NULL
   bvals <- as.data.frame(t(bvals))
+  bvals[] <- lapply(bvals, function(x) as.numeric(as.character(x)))
 
   # keep only numeric columns (ignores Prognosis automatically)
   bvals <- bvals[, vapply(bvals, is.numeric, logical(1L)), drop = FALSE]

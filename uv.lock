@@ -236,7 +236,7 @@ wheels = [
 ]
 
 [[package]]
-name = "cpgenius"
+name = "cpgene"
 version = "0.1.10"
 source = { virtual = "." }
 dependencies = [
