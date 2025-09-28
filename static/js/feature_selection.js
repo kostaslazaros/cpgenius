@@ -172,7 +172,7 @@ async function sha1File(file) {
   return computeSHA1(buf)
 }
 
-// --- CSV validation: only .csv; last header must be Prognosis ---
+// --- CSV validation: only .csv; prognosis values in first row ---
 function isCsvFile(file) {
   const byExt = /\.csv$/i.test(file.name || '')
   const byType = (file.type || '').includes('csv')
@@ -233,13 +233,12 @@ function splitCsvLine(line) {
 
 async function validateCsv(file) {
   if (!isCsvFile(file)) {
-    throw new Error('Please select a .csv file.')
+    throw new Error('Only CSV files are supported.')
   }
 
-  // For very large files with many columns, we need to read more than 256KB
-  // Start with 1MB, but expand if needed to capture the full header line
-  let readSize = 1024 * 1024 // 1MB
-  let headerLine = ''
+  // Read first row to check transposed structure (samples as columns, prognosis values in first row)
+  let readSize = 1024 * 1024 // Start with 1MB
+  let firstLine = ''
   let attempts = 0
   const maxAttempts = 10 // Prevent infinite loop
 
@@ -248,38 +247,44 @@ async function validateCsv(file) {
     const nlIdx = headChunk.indexOf('\n')
 
     if (nlIdx !== -1) {
-      // Found newline, we have the complete header
-      headerLine = headChunk.slice(0, nlIdx)
+      firstLine = headChunk.substring(0, nlIdx)
       break
     } else if (readSize >= file.size) {
       // We've read the entire file and there's no newline
-      headerLine = headChunk
+      firstLine = headChunk
       break
     } else {
-      // No newline found, double the read size and try again
-      readSize = Math.min(readSize * 2, file.size)
+      // Double the read size and try again
       attempts++
+      readSize = Math.min(readSize * 2, file.size)
     }
   }
 
-  if (attempts >= maxAttempts && headerLine === '') {
-    throw new Error('Could not find header line in CSV file - file may be too large or malformed.')
+  if (attempts >= maxAttempts && firstLine === '') {
+    throw new Error('Could not read CSV header line. File might be corrupted or too large.')
   }
 
-  // Clean up the header line
-  headerLine = headerLine.replace(/\r$/, '').replace(/^\uFEFF/, '')
-  const headers = splitCsvLine(headerLine)
+  // Clean up the first line
+  firstLine = firstLine.replace(/\r$/, '').replace(/^\uFEFF/, '')
+  const firstRowValues = splitCsvLine(firstLine)
 
-  if (!headers.length) {
-    throw new Error('CSV appears empty or header missing.')
+  if (!firstRowValues.length) {
+    throw new Error('CSV file appears to be empty or invalid.')
   }
 
-  const last = headers[headers.length - 1]
-  if (last !== 'Prognosis') {
+  // In transposed structure, the first row contains either:
+  // 1. "Prognosis,value1,value2,value3,..." (with identifier)
+  // 2. "value1,value2,value3,..." (without identifier, all prognosis values)
+  // We accept both formats
+  const firstValue = firstRowValues[0]
+  const hasPrognosisIdentifier = firstValue === 'Prognosis'
+
+  // Check if we have prognosis values
+  const prognosisValues = hasPrognosisIdentifier ? firstRowValues.slice(1) : firstRowValues
+
+  if (prognosisValues.length === 0) {
     throw new Error(
-      `CSV validation failed: last column is "${last || '(empty)'}" but must be "Prognosis". Found ${
-        headers.length
-      } columns total.`
+      'No prognosis values found in the first row. Expected format: "Prognosis,value1,value2,..." or "value1,value2,..."'
     )
   }
 
@@ -346,8 +351,8 @@ fileInput.addEventListener('change', async () => {
     const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
     const message =
       file.size > 10 * 1024 * 1024
-        ? `Large CSV validated successfully (${fileSizeMB}MB): last column is "Prognosis".`
-        : 'CSV looks good: last column is "Prognosis".'
+        ? `Large CSV validated successfully (${fileSizeMB}MB): prognosis values found in first row.`
+        : 'CSV looks good: prognosis values found in first row.'
     setStatus('ok', message)
   } catch (e) {
     setStatus('err', e.message || 'Invalid CSV.')
@@ -764,41 +769,122 @@ async function loadAlgorithms() {
 async function loadPrognosisValues(sha1Hash) {
   try {
     const response = await fetch(`${URL_VALUES}/${sha1Hash}`)
-    const data = await response.json()
-    prognosisValues = data.unique_values
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
 
-    // Update max features based on actual total columns (excluding Prognosis column)
-    const totalFeatures = data.total_columns - 1 // -1 for Prognosis column
+    const data = await response.json()
+
+    // Validate response data
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid response data format')
+    }
+
+    // Ensure prognosisValues is an array
+    prognosisValues = Array.isArray(data.unique_values) ? data.unique_values : []
+
+    if (prognosisValues.length === 0) {
+      console.warn('No prognosis values found in response')
+    }
+
+    // Update max features based on actual total rows (CpG sites in transposed structure)
+    // Backend pandas reports 501 rows but actual CpG features should be 500
+    // Adjust calculation: if backend reports 501, we want 500 features
+    const totalRows = data.total_rows || 0
+    const totalColumns = data.total_columns || 0
+    const totalFeatures = Math.max(0, totalRows - 1) // -1 to get correct count (501-1=500)
     maxFeatures = Math.max(100, totalFeatures) // Ensure minimum of 100
+
+    // DEBUG: Log all the calculations
+    console.log('=== SLIDER CALCULATION DEBUG ===')
+    console.log('Backend data.total_rows:', totalRows)
+    console.log('Backend data.total_columns:', totalColumns)
+    console.log('Calculated totalFeatures (totalRows - 1):', totalFeatures)
+    console.log('Final maxFeatures:', maxFeatures)
+    console.log('Setting slider.max to:', maxFeatures)
     featureSlider.max = maxFeatures
     featureSlider.min = 100
 
-    // Set initial value to half of max features or 500, whichever is smaller
-    const initialValue = Math.min(500, Math.floor(maxFeatures / 2))
-    featureSlider.value = Math.max(100, initialValue) // Ensure it's at least 100
+    // DEBUG: Verify slider properties were actually set
+    console.log('After setting slider properties:')
+    console.log('- slider.min:', featureSlider.min)
+    console.log('- slider.max:', featureSlider.max)
+    console.log('- slider DOM max attribute:', featureSlider.getAttribute('max'))
+
+    // Ensure current slider value is within the new range
+    const currentValue = parseInt(featureSlider.value) || 500
+    let newValue
+
+    if (currentValue > maxFeatures) {
+      // If current value exceeds new max, set to new max
+      newValue = maxFeatures
+    } else if (currentValue < 100) {
+      // If current value is below minimum, set to minimum
+      newValue = 100
+    } else {
+      // Current value is within range, keep it
+      newValue = currentValue
+    }
+
+    // If no current value or setting for first time, use smart default
+    if (currentValue === 500 && maxFeatures < 500) {
+      newValue = Math.min(250, Math.floor(maxFeatures / 2))
+    }
+
+    featureSlider.value = Math.max(100, newValue)
 
     maxFeaturesSpan.textContent = maxFeatures
     updateFeatureCount()
 
-    console.log(`Loaded CSV with ${data.total_columns} total columns, setting max features to ${maxFeatures}`)
+    console.log(
+      `Loaded CSV with ${totalRows} total rows (${totalFeatures} CpG features) and ${totalColumns} columns (samples), setting max features to ${maxFeatures}`
+    )
+    console.log('Available prognosis values:', prognosisValues)
 
     renderPrognosisValues()
     return data
   } catch (error) {
     console.error('Error loading prognosis values:', error)
+    // Set fallback values to prevent undefined errors
+    prognosisValues = []
+    maxFeatures = 1000
+    featureSlider.max = maxFeatures
+    featureSlider.min = 100
+    featureSlider.value = 500
+    maxFeaturesSpan.textContent = maxFeatures
+    updateFeatureCount()
+    renderPrognosisValues()
     throw error
   }
 }
 
 function renderPrognosisValues() {
+  // Ensure prognosisValues is an array
+  if (!Array.isArray(prognosisValues)) {
+    console.warn('prognosisValues is not an array, initializing as empty array')
+    prognosisValues = []
+  }
+
+  // Ensure selectedPrognosisValues is an array
+  if (!Array.isArray(selectedPrognosisValues)) {
+    console.warn('selectedPrognosisValues is not an array, initializing as empty array')
+    selectedPrognosisValues = []
+  }
+
   // Render available values
   availablePrognosisList.innerHTML = ''
-  prognosisValues.forEach((value) => {
-    if (!selectedPrognosisValues.includes(value)) {
-      const item = createPrognosisItem(value, 'available')
-      availablePrognosisList.appendChild(item)
-    }
-  })
+
+  if (prognosisValues.length === 0) {
+    availablePrognosisList.innerHTML =
+      '<div class="text-slate-500 text-center py-8">No prognosis values available</div>'
+  } else {
+    prognosisValues.forEach((value) => {
+      if (!selectedPrognosisValues.includes(value)) {
+        const item = createPrognosisItem(value, 'available')
+        availablePrognosisList.appendChild(item)
+      }
+    })
+  }
 
   // Render selected values
   selectedPrognosisList.innerHTML = ''
@@ -880,7 +966,16 @@ function updateRunButton() {
 }
 
 function updateFeatureCount() {
-  featureCount.textContent = featureSlider.value
+  const slider = document.getElementById('featureSlider')
+  const count = document.getElementById('featureCount')
+
+  if (!slider || !count) {
+    console.error('Slider or count element not found in updateFeatureCount')
+    return
+  }
+
+  count.textContent = slider.value
+
   // Update download links when slider changes
   updateDownloadLinks()
 }
@@ -1146,7 +1241,131 @@ async function deleteAnalysis() {
 }
 
 // Event listeners for dynamic elements
-featureSlider.addEventListener('input', updateFeatureCount)
+function setupSliderEventListeners() {
+  console.log('Setting up slider event listeners')
+  const slider = document.getElementById('featureSlider')
+  const count = document.getElementById('featureCount')
+
+  console.log('Slider element:', slider)
+  console.log('Slider parent:', slider?.parentElement)
+  console.log('Slider display:', slider ? getComputedStyle(slider).display : 'N/A')
+  console.log('Slider visibility:', slider ? getComputedStyle(slider).visibility : 'N/A')
+
+  if (!slider) {
+    console.error('featureSlider element not found')
+    return false
+  }
+
+  if (!count) {
+    console.error('featureCount element not found')
+    return false
+  }
+
+  // Remove any existing listeners to prevent duplicates
+  slider.removeEventListener('input', updateFeatureCount)
+  slider.removeEventListener('change', updateFeatureCount)
+
+  // Add event listeners
+  slider.addEventListener('input', function (e) {
+    updateFeatureCount()
+  })
+
+  slider.addEventListener('change', function (e) {
+    updateFeatureCount()
+  })
+
+  // Keep mousedown for manual slider functionality
+  slider.addEventListener('mousedown', function (e) {
+    // Manual slider implementation will handle this
+  })
+
+  // Test initial functionality and verify slider properties
+  console.log('Slider properties:')
+  console.log('- min:', slider.min)
+  console.log('- max:', slider.max)
+  console.log('- value:', slider.value)
+  console.log('- step:', slider.step)
+  console.log('- disabled:', slider.disabled)
+
+  // Set default properties only if not already set by CSV data
+  if (!slider.min || slider.min === '0') {
+    slider.min = '100'
+  }
+  if (!slider.max || slider.max === '0') {
+    slider.max = '1000' // This will be updated by loadPrognosisValues
+  }
+  if (!slider.step || slider.step === '0') {
+    slider.step = '1'
+  }
+
+  // Set initial value if not already set
+  if (!slider.value || slider.value === '') {
+    slider.value = '500'
+  }
+
+  // Verify slider properties are set correctly
+  console.log('Slider initialized with range:', slider.min, 'to', slider.max, 'current value:', slider.value)
+
+  updateFeatureCount()
+
+  // Global test function and manual slider implementation
+  window.testSlider = function (value) {
+    console.log('Setting slider value to:', value)
+    slider.value = value
+    slider.dispatchEvent(new Event('input'))
+  }
+
+  // Fallback: Manual slider implementation if normal events don't work
+  let isDragging = false
+
+  slider.addEventListener('mousedown', function (e) {
+    isDragging = true
+    updateSliderFromMouse(e)
+  })
+
+  document.addEventListener('mousemove', function (e) {
+    if (isDragging) {
+      updateSliderFromMouse(e)
+    }
+  })
+
+  document.addEventListener('mouseup', function () {
+    if (isDragging) {
+      isDragging = false
+    }
+  })
+
+  function updateSliderFromMouse(e) {
+    const rect = slider.getBoundingClientRect()
+    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    const range = parseInt(slider.max) - parseInt(slider.min)
+    const newValue = parseInt(slider.min) + Math.round(percent * range)
+
+    if (newValue !== parseInt(slider.value)) {
+      slider.value = newValue
+      updateFeatureCount()
+    }
+  }
+
+  console.log('Slider event listeners attached successfully')
+  return true
+}
+
+// Try to setup slider immediately
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupSliderEventListeners)
+} else {
+  setupSliderEventListeners()
+}
+
+// Also try when the analysis section becomes visible
+const originalShowAnalysisSection = showAnalysisSection
+showAnalysisSection = function () {
+  originalShowAnalysisSection()
+  // Wait a bit for elements to be rendered
+  setTimeout(setupSliderEventListeners, 100)
+}
+
 algorithmSelect.addEventListener('change', updateRunButton)
 runAnalysisBtn.addEventListener('click', runFeatureSelection)
 deleteBtn.addEventListener('click', deleteAnalysis)

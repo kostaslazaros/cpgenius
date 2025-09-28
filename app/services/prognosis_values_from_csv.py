@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 from fastapi import HTTPException
 
@@ -9,8 +11,18 @@ from app.schemas import (
 PROGNOSIS_COLUMN_NAME = cnf.prognosis_column_name  # "Prognosis" by default
 
 
-def get_prognosis_values_from_csv(sha1_hash: str):
-    storage_dir = cnf.dmp_workdir / sha1_hash
+def get_prognosis_values_from_csv(sha1_hash: str, workdir: Path = None):
+    """
+    Get prognosis values from CSV file in transposed structure.
+
+    Args:
+        sha1_hash: The SHA1 hash of the file
+        workdir: Working directory to search for files (defaults to dmp_workdir for backward compatibility)
+    """
+    if workdir is None:
+        workdir = cnf.dmp_workdir
+
+    storage_dir = workdir / sha1_hash
 
     if not storage_dir.exists():
         raise HTTPException(status_code=404, detail="File not found")

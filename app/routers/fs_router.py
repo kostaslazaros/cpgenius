@@ -2,7 +2,6 @@
 # Handles uploading CSV files, running algorithms, and managing results
 import shutil
 
-import pandas as pd
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -19,6 +18,7 @@ from app.schemas import (
     TaskStatus,
 )
 from app.services.get_algorithms import get_algorithms
+from app.services.prognosis_values_from_csv import get_prognosis_values_from_csv
 from app.services.service_upload_beta_csv import UploadBetaValuesCSVService
 from app.utils.get_metadata import get_metadata
 
@@ -54,72 +54,8 @@ async def get_available_algorithms():
 
 @router.get("/prognosis-values/{sha1_hash}", response_model=PrognosisValuesResponse)
 async def get_prognosis_values(sha1_hash: str):
-    """Get unique values from the Prognosis column of the uploaded CSV file."""
-    storage_dir = cnf.fs_workdir / sha1_hash
-
-    if not storage_dir.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    try:
-        # Find the ORIGINAL CSV file (not result files)
-        csv_files = list(storage_dir.glob("*.csv"))
-        if not csv_files:
-            raise HTTPException(
-                status_code=404, detail="CSV file not found in storage directory"
-            )
-
-        # Filter out result files - original file shouldn't have algorithm names in it
-        algorithm_names = [alg.value for alg in Algorithm]
-        original_csv_files = [
-            f
-            for f in csv_files
-            if not any(alg_name in f.name.lower() for alg_name in algorithm_names)
-        ]
-
-        if not original_csv_files:
-            raise HTTPException(
-                status_code=404,
-                detail="Original CSV file not found - only result files exist",
-            )
-
-        # Use the first original CSV file (should be only one)
-        csv_file = original_csv_files[0]
-
-        # Read CSV and extract unique Prognosis values
-        try:
-            df = pd.read_csv(csv_file)
-
-            # STRICT CHECK: Prognosis column must exist
-            if "Prognosis" not in df.columns:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"CSV file must contain a 'Prognosis' column. Found columns: {list(df.columns)}",
-                )
-
-            # Get unique values from Prognosis column (excluding NaN)
-            unique_values = df["Prognosis"].dropna().unique().tolist()
-            unique_values = [str(val) for val in unique_values]  # Convert to strings
-            unique_values.sort()  # Sort alphabetically
-
-            return PrognosisValuesResponse(
-                sha1_hash=sha1_hash,
-                filename=csv_file.name,
-                unique_values=unique_values,
-                total_rows=len(df),
-                total_columns=len(df.columns),
-                prognosis_column_found=True,
-                message=f"Found {len(unique_values)} unique prognosis values",
-            )
-
-        except pd.errors.EmptyDataError:
-            raise HTTPException(status_code=400, detail="CSV file is empty")
-        except pd.errors.ParserError as e:
-            raise HTTPException(
-                status_code=400, detail=f"Error parsing CSV file: {str(e)}"
-            )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading CSV file: {str(e)}")
+    """Get unique prognosis values from the first row of the uploaded CSV file (transposed structure)."""
+    return get_prognosis_values_from_csv(sha1_hash, workdir=cnf.fs_workdir)
 
 
 @router.post("/run-algorithm", response_model=AlgorithmResponse)

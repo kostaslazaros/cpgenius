@@ -58,36 +58,64 @@
       box-shadow: 0 0 25px rgba(236, 72, 153, 0.3);
     }
 
-    input[type="range"] {
+    /* Modern, functional slider styling */
+    #featureSlider {
       -webkit-appearance: none;
       appearance: none;
-      height: 0.75rem;
+      width: 100%;
+      height: 8px;
+      border-radius: 8px;
       background: linear-gradient(90deg, rgb(88 28 135), rgb(236 72 153));
-      border-radius: 0.5rem;
       outline: none;
-      box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+      opacity: 0.8;
+      transition: opacity 0.2s, box-shadow 0.2s;
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.2);
+      position: relative;
     }
 
-    input[type="range"]::-webkit-slider-thumb {
+    #featureSlider:hover {
+      opacity: 1;
+      box-shadow: 0 0 25px rgba(236, 72, 153, 0.4);
+    }
+
+    #featureSlider:focus {
+      opacity: 1;
+      box-shadow: 0 0 30px rgba(236, 72, 153, 0.6);
+    }
+
+    #featureSlider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 1.5rem;
-      height: 1.5rem;
-      background: radial-gradient(circle, rgb(236 72 153), rgb(219 39 119));
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
+      background: radial-gradient(circle, rgb(236 72 153), rgb(219 39 119));
       cursor: pointer;
+      border: 2px solid rgba(255, 255, 255, 0.3);
       box-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
-      border: 2px solid rgb(255 255 255 / 0.3);
+      transition: all 0.2s ease;
     }
 
-    input[type="range"]::-moz-range-thumb {
-      width: 1.5rem;
-      height: 1.5rem;
-      background: radial-gradient(circle, rgb(236 72 153), rgb(219 39 119));
+    #featureSlider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 25px rgba(236, 72, 153, 0.8);
+    }
+
+    #featureSlider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
+      background: radial-gradient(circle, rgb(236 72 153), rgb(219 39 119));
       cursor: pointer;
-      border: 2px solid rgb(255 255 255 / 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.3);
       box-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
+    }
+
+    #featureSlider::-moz-range-track {
+      height: 8px;
+      background: linear-gradient(90deg, rgb(88 28 135), rgb(236 72 153));
+      border-radius: 8px;
+      border: none;
     }
 
     /* Mobile-specific styles */
@@ -207,7 +235,7 @@
           <div>
             <h3 class="text-lg font-medium text-slate-300 mb-3">Available Prognosis Values</h3>
             <div id="availablePrognosisContainer"
-              class="drop-zone border border-magenta-700/40 rounded-xl bg-slate-800/50 p-4 min-h-[200px] max-h-[300px] overflow-y-auto shadow-[0_0_15px_rgba(236,72,153,0.1)]">
+              class="border-2 border-dashed border-violet-400/50 rounded-xl bg-gradient-to-br from-transparent to-violet-900/10 p-4 md:p-6 min-h-[200px] max-h-[300px] overflow-y-auto shadow-[0_0_15px_rgba(236,72,153,0.1)] transition-all duration-300">
               <div id="availablePrognosisList" class="space-y-2">
                 <!-- Dynamically populated -->
               </div>
@@ -218,7 +246,7 @@
           <div>
             <h3 class="text-lg font-medium text-slate-300 mb-3">Selected Prognosis Values</h3>
             <div id="selectedPrognosisContainer"
-              class="drop-zone border border-magenta-700/40 rounded-xl bg-slate-800/50 p-4 min-h-[200px] max-h-[300px] overflow-y-auto shadow-[0_0_15px_rgba(236,72,153,0.1)]">
+              class="border-2 border-dashed border-violet-400/50 rounded-xl bg-gradient-to-br from-transparent to-violet-900/10 p-4 md:p-6 min-h-[200px] max-h-[300px] overflow-y-auto shadow-[0_0_15px_rgba(236,72,153,0.1)] transition-all duration-300">
               <div id="selectedPrognosisList" class="space-y-2">
                 <div class="text-slate-500 text-center py-8">
                   Drop prognosis values here
@@ -242,12 +270,11 @@
         <div>
           <h3 class="text-lg font-medium text-slate-300 mb-3">Number of Features</h3>
           <div class="space-y-3">
-            <input id="featureSlider" type="range" min="100" max="1000" value="500"
-              class="w-full h-3 bg-gradient-to-r from-magenta-900/50 to-fuchsia-900/50 rounded-lg appearance-none cursor-pointer slider shadow-[0_0_15px_rgba(236,72,153,0.2)]">
+            <input id="featureSlider" type="range" min="100" max="1000" value="500" class="w-full">
             <div class="flex justify-between text-sm text-slate-400">
               <span>100</span>
               <span id="featureCount" class="text-magenta-300 font-medium text-lg">500</span>
-              <span id="maxFeatures">1000</span>
+              <span id="maxFeatures">-</span>
             </div>
           </div>
         </div>
@@ -304,8 +331,7 @@
         <!-- Generated Images Gallery -->
         <div id="imagesSection" class="hidden">
           <h3 class="text-lg font-medium text-slate-300 mb-3">Generated Visualizations</h3>
-          <div
-            class="border border-magenta-700/50 rounded-xl bg-slate-800/50 p-4 shadow-[0_0_20px_rgba(236,72,153,0.15)]">
+          <div class="border border-cyan-700/50 rounded-xl bg-slate-800/50 p-4 shadow-[0_0_20px_rgba(34,211,238,0.15)]">
             <div id="imageGallery" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <!-- Dynamically populated -->
             </div>
