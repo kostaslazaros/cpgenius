@@ -53,7 +53,8 @@ class UploadBetaValuesCSVService:
 
     def _validate_prognosis_column(self, temp_file_path: Path) -> None:
         try:
-            df = pd.read_csv(temp_file_path, nrows=1)
+            # Read first 2 rows to get headers and first data row
+            df = pd.read_csv(temp_file_path, nrows=2)
         except pd.errors.EmptyDataError:
             raise HTTPException(status_code=400, detail="CSV file is empty")
         except pd.errors.ParserError as e:
@@ -63,23 +64,45 @@ class UploadBetaValuesCSVService:
                 status_code=400, detail=f"Error validating CSV file: {str(e)}"
             )
 
-        if "Prognosis" not in df.columns:
+        if len(df) < 1:
             raise HTTPException(
                 status_code=400,
-                detail=f"CSV file must contain a 'Prognosis' column. Found columns: {list(df.columns)}",
+                detail="CSV file must contain at least 2 rows (sample headers and prognosis values row)",
             )
 
-        # Check for any non-null values in the sampled rows
+        # Check if first value of first row (index name) is "Prognosis"
+        first_row_index = str(df.index[0]) if not df.empty else str(df.iloc[0, 0])
+
+        # Try both index and first cell approaches
+        if first_row_index != "Prognosis":
+            # Check if first cell contains "Prognosis"
+            first_cell_value = str(df.iloc[0, 0]) if len(df) > 0 else ""
+            if first_cell_value != "Prognosis":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"CSV validation failed: first row must start with 'Prognosis' (found: '{first_cell_value}'). Expected structure: columns are samples, first row contains prognosis values.",
+                )
+
+        # Check for prognosis values in the first row (excluding the "Prognosis" identifier)
         try:
-            prognosis_values = df["Prognosis"].dropna()
+            first_row = df.iloc[0]  # First row with prognosis values
+            # Skip the first column if it contains "Prognosis", otherwise use all columns
+            if str(first_row.iloc[0]) == "Prognosis":
+                prognosis_values = first_row.iloc[
+                    1:
+                ].dropna()  # Skip "Prognosis" column
+            else:
+                prognosis_values = first_row.dropna()  # Use all values
+
             if len(prognosis_values) == 0:
                 raise HTTPException(
                     status_code=400,
-                    detail="Prognosis column exists but contains no valid values (all null/empty)",
+                    detail="First row contains 'Prognosis' identifier but no prognosis values found",
                 )
-        except KeyError:
-            # Defensive: in case of weird header parsing
-            raise HTTPException(status_code=400, detail="Missing 'Prognosis' column")
+        except Exception:
+            raise HTTPException(
+                status_code=400, detail="Error reading prognosis values from first row"
+            )
 
     async def handle_upload(
         self, file: UploadFile, provided_id: Optional[str]

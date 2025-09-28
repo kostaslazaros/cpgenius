@@ -234,10 +234,9 @@ async function validateCsv(file) {
     throw new Error('Please select a .csv file.')
   }
 
-  // For very large files with many columns, we need to read more than 256KB
-  // Start with 1MB, but expand if needed to capture the full header line
+  // Read first row to check transposed structure (samples as columns, prognosis values in first row)
   let readSize = 1024 * 1024 // 1MB
-  let headerLine = ''
+  let firstLine = ''
   let attempts = 0
   const maxAttempts = 10 // Prevent infinite loop
 
@@ -246,12 +245,12 @@ async function validateCsv(file) {
     const nlIdx = headChunk.indexOf('\n')
 
     if (nlIdx !== -1) {
-      // Found newline, we have the complete header
-      headerLine = headChunk.slice(0, nlIdx)
+      // Found newline, we have the complete first row
+      firstLine = headChunk.slice(0, nlIdx)
       break
     } else if (readSize >= file.size) {
       // We've read the entire file and there's no newline
-      headerLine = headChunk
+      firstLine = headChunk
       break
     } else {
       // No newline found, double the read size and try again
@@ -260,24 +259,31 @@ async function validateCsv(file) {
     }
   }
 
-  if (attempts >= maxAttempts && headerLine === '') {
-    throw new Error('Could not find header line in CSV file - file may be too large or malformed.')
+  if (attempts >= maxAttempts && firstLine === '') {
+    throw new Error('Could not read CSV file - file may be too large or malformed.')
   }
 
-  // Clean up the header line
-  headerLine = headerLine.replace(/\r$/, '').replace(/^\uFEFF/, '')
-  const headers = splitCsvLine(headerLine)
+  // Clean up the first line
+  firstLine = firstLine.replace(/\r$/, '').replace(/^\uFEFF/, '')
+  const firstRowValues = splitCsvLine(firstLine)
 
-  if (!headers.length) {
-    throw new Error('CSV appears empty or header missing.')
+  if (!firstRowValues.length) {
+    throw new Error('CSV appears empty or first row missing.')
   }
 
-  const last = headers[headers.length - 1]
-  if (last !== 'Prognosis') {
+  // In transposed structure, the first row contains either:
+  // 1. "Prognosis,value1,value2,value3,..." (with identifier)
+  // 2. "value1,value2,value3,..." (without identifier, all prognosis values)
+  // We accept both formats
+  const firstValue = firstRowValues[0]
+  const hasPrognosisIdentifier = firstValue === 'Prognosis'
+
+  // Check if we have prognosis values
+  const prognosisValues = hasPrognosisIdentifier ? firstRowValues.slice(1) : firstRowValues
+
+  if (prognosisValues.length === 0) {
     throw new Error(
-      `CSV validation failed: last column is "${last || '(empty)'}" but must be "Prognosis". Found ${
-        headers.length
-      } columns total.`
+      'CSV validation failed: no prognosis values found in first row. Expected transposed structure where columns are samples and first row contains prognosis values.'
     )
   }
 
@@ -345,8 +351,8 @@ fileInput.addEventListener('change', async () => {
     const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
     const message =
       file.size > 10 * 1024 * 1024
-        ? `Large CSV validated successfully (${fileSizeMB}MB): last column is "Prognosis".`
-        : 'CSV looks good: last column is "Prognosis".'
+        ? `Large CSV validated successfully (${fileSizeMB}MB): transposed structure with prognosis values in first row.`
+        : 'CSV looks good: transposed structure with prognosis values in first row.'
     setStatus('ok', message)
   } catch (e) {
     setStatus('err', e.message || 'Invalid CSV.')
@@ -729,7 +735,9 @@ async function loadPrognosisValues(sha1Hash) {
     const data = await response.json()
     prognosisValues = data.unique_values
 
-    console.log(`Loaded CSV with ${data.total_columns} total columns, setting max features to ${maxFeatures}`)
+    console.log(
+      `Loaded transposed CSV with ${data.total_columns} samples (columns) and ${data.total_rows} CpG sites (rows), setting max features to ${maxFeatures}`
+    )
 
     renderPrognosisValues()
     return data

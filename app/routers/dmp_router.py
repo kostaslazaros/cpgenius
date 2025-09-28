@@ -29,7 +29,9 @@ dmp_run_service = DmpRunService(cnf.dmp_workdir)
 
 @router.post("/upload", response_model=CSVUploadResponse)
 async def upload_csv_file(
-    file: UploadFile = File(..., description="Upload a CSV file with Prognosis column"),
+    file: UploadFile = File(
+        ..., description="Upload a CSV file with prognosis values in first data row"
+    ),
     id: str = Form(None),  # Optional SHA1 hash from frontend
 ):
     return await upload_service.handle_upload(file, id)

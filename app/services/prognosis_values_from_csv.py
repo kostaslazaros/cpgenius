@@ -24,30 +24,51 @@ def get_prognosis_values_from_csv(sha1_hash: str):
             )
 
         csv_file = csv_files[0]
-        # Read CSV and extract unique Prognosis values
+        # Read CSV and extract unique Prognosis values from first row
         try:
-            df = pd.read_csv(csv_file)
+            # Read first row to get prognosis values (transposed structure)
+            df = pd.read_csv(csv_file, nrows=1)
 
-            # STRICT CHECK: Prognosis column must exist
-            if PROGNOSIS_COLUMN_NAME not in df.columns:
+            if len(df) < 1:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"CSV file must contain a '{PROGNOSIS_COLUMN_NAME}' column. Found columns: {list(df.columns)}",
+                    detail="CSV file must contain at least 1 row with prognosis values",
                 )
 
-            # Get unique values from Prognosis column (excluding NaN)
-            unique_values = df[PROGNOSIS_COLUMN_NAME].dropna().unique().tolist()
+            # Get the first row which should contain prognosis values
+            first_row = df.iloc[0]
+
+            # Check if first cell is "Prognosis" and skip it, or use all values
+            if str(first_row.iloc[0]) == PROGNOSIS_COLUMN_NAME:
+                # Skip the "Prognosis" identifier column
+                prognosis_values = first_row.iloc[1:].dropna()
+            else:
+                # Use all values in first row as prognosis values
+                prognosis_values = first_row.dropna()
+
+            if len(prognosis_values) == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No prognosis values found in first row. Expected transposed structure with samples as columns.",
+                )
+
+            # Get unique values and process them
+            unique_values = prognosis_values.unique().tolist()
             unique_values = [str(val) for val in unique_values]  # Convert to strings
+            unique_values = list(set(unique_values))  # Remove duplicates
             unique_values.sort()  # Sort alphabetically
+
+            # Read full file to get total dimensions for response
+            df_full = pd.read_csv(csv_file)
 
             return PrognosisValuesResponse(
                 sha1_hash=sha1_hash,
                 filename=csv_file.name,
                 unique_values=unique_values,
-                total_rows=len(df),
-                total_columns=len(df.columns),
+                total_rows=len(df_full),  # Number of CpG sites
+                total_columns=len(df_full.columns),  # Number of samples
                 prognosis_column_found=True,
-                message=f"Found {len(unique_values)} unique prognosis values",
+                message=f"Found {len(unique_values)} unique prognosis values from transposed structure (columns=samples, rows=CpG sites)",
             )
 
         except pd.errors.EmptyDataError:

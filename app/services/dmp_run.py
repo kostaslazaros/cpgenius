@@ -58,14 +58,37 @@ class DmpRunService:
                 detail=f"DMP analysis requires exactly 2 prognosis groups, got {len(selected)}",
             )
 
-        # Ensure selected groups exist in CSV
+        # Ensure selected groups exist in CSV - read from first row (transposed structure)
         try:
-            df = pd.read_csv(csv_file, usecols=["Prognosis"])
-        except ValueError:
-            # Missing 'Prognosis' column when using usecols
-            raise HTTPException(
-                status_code=400, detail="CSV file must contain a 'Prognosis' column"
-            )
+            # Read first row to get prognosis values
+            df = pd.read_csv(csv_file, nrows=1)
+
+            if len(df) < 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="CSV file must contain at least 1 row with prognosis values",
+                )
+
+            # Get prognosis values from first row
+            first_row = df.iloc[0]  # First row with prognosis values
+
+            # Check if first cell is "Prognosis" and handle accordingly
+            if str(first_row.iloc[0]) == "Prognosis":
+                # Skip the "Prognosis" identifier column
+                prognosis_values = first_row.iloc[1:].dropna()
+            else:
+                # Use all values in first row as prognosis values
+                prognosis_values = first_row.dropna()
+
+            if len(prognosis_values) == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No prognosis values found in first row of transposed CSV",
+                )
+
+            # Extract unique prognosis values
+            uniques = set(str(v) for v in prognosis_values.unique().tolist())
+
         except pd.errors.EmptyDataError:
             raise HTTPException(status_code=400, detail="CSV file is empty")
         except pd.errors.ParserError as e:
@@ -73,7 +96,6 @@ class DmpRunService:
                 status_code=400, detail=f"Error parsing CSV file: {str(e)}"
             )
 
-        uniques = set(str(v) for v in df["Prognosis"].dropna().unique().tolist())
         missing = [g for g in selected if str(g) not in uniques]
         if missing:
             raise HTTPException(

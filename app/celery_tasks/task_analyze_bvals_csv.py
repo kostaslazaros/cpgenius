@@ -46,17 +46,39 @@ def task_analyze_bvals_csv(self, file_path: str, sha1_hash: str, storage_dir: st
             meta={"status": "Analyzing CSV structure", "progress": 30},
         )
 
-        # STRICT VALIDATION: Prognosis column is required
-        if "Prognosis" not in df.columns:
+        # STRICT VALIDATION: First row must contain prognosis values (transposed structure)
+        if len(df) < 1:
             raise ValueError(
-                f"CSV file must contain a 'Prognosis' column. Found columns: {list(df.columns)}"
+                "CSV file must contain at least 1 row with prognosis values (transposed structure: columns=samples, rows=CpG sites)"
             )
 
-        # Check if Prognosis column has any non-null values
-        prognosis_series = df[PROGNOSIS_COLUMN].dropna()
-        if len(prognosis_series) == 0:
+        # Get first row which should contain prognosis values
+        first_row = df.iloc[0]  # First row
+
+        # Handle CSV with index column (like "Unnamed: 0") - check if first cell is "Prognosis"
+        first_cell_value = str(first_row.iloc[0])
+
+        if first_cell_value == PROGNOSIS_COLUMN:
+            # First cell is "Prognosis" identifier in index column, actual values start from column 1
+            prognosis_values = first_row.iloc[1:].dropna()  # Skip index column
+        else:
+            # Check if this might be a CSV with row labels column
+            # Look for "Prognosis" in first column (index/row labels)
+            if hasattr(df, "index") and len(df.index) > 0:
+                first_index_value = str(df.index[0])
+                if first_index_value == PROGNOSIS_COLUMN:
+                    # Row index contains "Prognosis", use all column values from first row
+                    prognosis_values = first_row.dropna()
+                else:
+                    # Neither first cell nor first index is "Prognosis", this might not be the expected format
+                    prognosis_values = first_row.dropna()  # Try using all values anyway
+            else:
+                # First cell is already a prognosis value, use all values
+                prognosis_values = first_row.dropna()
+
+        if len(prognosis_values) == 0:
             raise ValueError(
-                f"{PROGNOSIS_COLUMN} column exists but contains no valid values (all null/empty)"
+                "No prognosis values found in first row of transposed CSV structure"
             )
 
         self.update_state(
@@ -64,30 +86,33 @@ def task_analyze_bvals_csv(self, file_path: str, sha1_hash: str, storage_dir: st
             meta={"status": "Guessing Illumina array type", "progress": 30},
         )
 
-        illumina_types = guess_illumina_array_type_pd(df.columns.drop("Prognosis"))
+        illumina_types = guess_illumina_array_type_pd(
+            df.index[1:] if len(df) > 1 else pd.Index([])
+        )
 
         result = {
             "sha1_hash": sha1_hash,
             "filename": file_path_obj.name,
             "file_size": int(file_path_obj.stat().st_size),
-            "rows": int(len(df)),
-            "columns": int(len(df.columns)),
-            "prognosis_column": PROGNOSIS_COLUMN,
+            "rows": int(len(df)),  # Number of CpG sites (plus prognosis row)
+            "columns": int(len(df.columns)),  # Number of samples
+            "prognosis_column": "First row (transposed structure)",
             "analysis_time": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
             "detected_illumina_array_types": illumina_types,
+            "structure_type": "transposed",  # Document the structure type
         }
 
-        # Get prognosis column statistics (we know it exists and has values)
-        unique_values = prognosis_series.unique().tolist()
+        # Get prognosis statistics from first data row values (we know they exist)
+        unique_values = prognosis_values.unique().tolist()
+        value_counts = prognosis_values.value_counts().to_dict()
 
         result.update(
             {
                 "prognosis_unique_values": [str(val) for val in sorted(unique_values)],
                 "prognosis_value_counts": int(len(unique_values)),
-                "prognosis_null_count": int(df[PROGNOSIS_COLUMN].isna().sum()),
+                "prognosis_null_count": 0,  # We already filtered out NaN values
                 "prognosis_distribution": {
-                    str(k): int(v)
-                    for k, v in df[PROGNOSIS_COLUMN].value_counts().to_dict().items()
+                    str(k): int(v) for k, v in value_counts.items()
                 },
             }
         )
