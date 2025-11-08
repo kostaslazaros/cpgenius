@@ -28,6 +28,6 @@ RUN mkdir -p  /input /output
 
 WORKDIR /app
 
-COPY idat_preprocessor.R dmp_volcano.R .
+COPY idat_preprocessor.R dmp_volcano.R dmp_volcano_fixname.R .
 
 ENTRYPOINT ["Rscript"]
