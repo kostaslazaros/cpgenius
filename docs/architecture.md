@@ -1,8 +1,12 @@
-# Application Architecture Overview
+# Application Architecture
 
 ## System Architecture
 
-CpGene is a **DNA Methylation Analysis Platform** built with a modern microservices architecture using FastAPI, Celery, Redis, and Docker. The system processes IDAT files (Illumina methylation arrays) and CSV data to perform comprehensive feature selection and machine learning analysis.
+<div style="text-align: justify;">
+
+CpGene is a DNA Methylation Analysis Platform built with a modern microservices architecture using FastAPI, Celery, Redis, and Docker. The system processes IDAT files (Illumina methylation arrays) and CSV data to perform comprehensive feature selection and machine learning analysis.
+
+</div>
 
 ## Architecture Components
 
@@ -61,7 +65,6 @@ CpGene is a **DNA Methylation Analysis Platform** built with a modern microservi
 ### 4. Machine Learning Engine
 
 - **Location**: `app/algorithms/`
-- **Algorithms Available**:
 
 #### Feature Selection Methods:
 
@@ -71,23 +74,27 @@ CpGene is a **DNA Methylation Analysis Platform** built with a modern microservi
 - **RFE SVM** (`rfe_svm.py`) - Recursive Feature Elimination with Support Vector Machines
 - **Ridge L2** (`ridge_l2.py`) - L2 regularized linear models
 - **SHAP XGBoost** (`shap_xgboost.py`) - Explainable AI feature importance
-
-#### Advanced Methods:
-
 - **Garsen-Olden MLP** (`garsen_olden_mlp.py`) - Neural network with connection weights analysis
-- **Post Borda** (`post_borda.py`) - Ensemble ranking aggregation
-- **CpG Gene Mapping** (`cpg_gene_mapping.py`) - Genomic annotation
-- **Dummy Classifier** (`dummy_classifier.py`) - Baseline comparison
 
 ### 5. Containerized Processing (Docker)
 
 - **R-MinFi Container**: Specialized container for IDAT file processing
 - **Purpose**: Methylation array data preprocessing
 - **Operations**:
+
   - Beta value calculation
   - Quality control metrics
   - Methylation signal extraction
   - Array type detection
+
+- **R-DMP (limma) Container**: Specialized container for DMP analysis
+- **Purpose**: Differentially Methylated Positions (DMP) analysis from methylation arrays using limma (supports covariates & contrasts).
+- **Operations**:
+  - β-value matrix ingestion with matched phenotype table
+  - Category/contrast selection (e.g., A vs B or custom contrasts)
+  - limma linear modeling with empirical Bayes
+  - P-value and FDR (BH) computation
+  - CpG filtering by |Δβ| and p/FDR thresholds
 
 ### 6. Data Storage
 
@@ -187,9 +194,7 @@ uv run uvicorn app.start_fastapi:app --host 0.0.0.0 --port 8001 --reload
 
 This architecture provides a robust, scalable platform for DNA methylation analysis with a modern web interface and powerful machine learning capabilities.
 
-```bash
-sudo apt update
-```
+<div align="center">
 
 ```mermaid
 flowchart TD
@@ -213,7 +218,97 @@ flowchart TD
     RE --> ENR
 ```
 
-[Link text Here](/documentation/overview)
+</div>
 
-![diagram1](/static/images/a2.png)
-![diagram1](/static/images/a1.png)
+<br>
+
+<div style="text-align: justify;">
+
+User-provided IDAT files undergo preprocessing and quality control to produce normalized beta values, which are exported as processed datasets. These data are then subjected to feature selection using either differential methylation point analysis or machine learning–based ranking in binary or multi-class settings. Each analytical path generates CpG sets that are saved in CSV format. The resulting features are mapped to their corresponding genes and subsequently analyzed through enrichment procedures to derive biologically meaningful interpretations of the identified epigenetic signatures.
+
+</div>
+
+<br>
+
+<div align="center">
+
+```mermaid
+flowchart TD
+
+FE[HTML • JavaScript • Tailwind css]
+
+FA[FastAPI API]
+
+
+RB[Redis]
+CW[Celery]
+
+
+DK[Docker]
+PY[Python Scripts]
+
+FE --- FA
+FA --- CW
+CW --- RB
+CW --- DK
+CW --- PY
+```
+
+</div>
+
+<br>
+
+<div style="text-align: justify;">
+
+The frontend layer, built with HTML, JavaScript, and Tailwind CSS, communicates with the FastAPI backend, which coordinates all user requests. Task scheduling and asynchronous job management are handled through Celery, enabling efficient execution of long-running analyses. Celery interacts with Redis for message brokering, executes containerized workflows through Docker, and triggers the required Python scripts, forming a scalable and modular infrastructure for high-throughput DNA methylation analysis.
+
+</div>
+
+<br>
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as UI (HTML/JS)
+    participant FastAPI as FastAPI Endpoint
+    participant Service
+
+    %% --- Upload & tag extraction ---
+    User->>UI: Upload CSV file
+    UI->>FastAPI: POST /upload (CSV file)
+    activate FastAPI
+    FastAPI->>FastAPI: Save file locally
+    FastAPI->>Service: preprocess(file_path)
+    activate Service
+    Note right of Service: Extract tag data
+    Service-->>FastAPI: tag_data
+    deactivate Service
+    FastAPI-->>UI: 200 OK (tag_data)
+    deactivate FastAPI
+    UI-->>User: Display tag data + parameters
+
+    %% --- Parameters & processing ---
+    User->>UI: Select parameters & submit
+    UI->>FastAPI: POST /process (params, file_id)
+    activate FastAPI
+    FastAPI->>Service: process(params, file_path)
+    activate Service
+    Note right of Service: Generate output files
+    Service-->>FastAPI: download_links
+    deactivate Service
+    FastAPI-->>UI: 200 OK (download_links)
+    deactivate FastAPI
+
+    %% --- Download ---
+    UI-->>User: Display download links
+    User->>UI: Download files
+    UI-->>User: Files
+```
+
+<br>
+
+<div style="text-align: justify;">
+
+The diagram outlines the communication flow between the user interface, the FastAPI backend, and the underlying service layer. The user initiates the process by uploading a CSV file through the web interface, which is transmitted to the FastAPI endpoint and stored locally. The backend then invokes preprocessing functions to extract tag information, which is returned to the interface for parameter selection. After the user submits the selected parameters, the backend triggers the processing module that generates the required output files. The resulting download links are sent back to the interface, enabling the user to retrieve the final processed data. This sequence demonstrates the coordinated exchange of data and tasks across the system’s components.
+
+</div>

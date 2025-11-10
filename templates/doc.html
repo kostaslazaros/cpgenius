@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="/static/vendor/markdown-dark.css">
   <!-- Highlight.js theme - local vendor wrapper -->
   <link rel="stylesheet" href="/static/vendor/hljs-dark.css">
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <!-- Mermaid SVG visibility fixes for dark theme -->
   <style>
     /* Ensure mermaid SVG paths and shapes are visible on dark backgrounds */
@@ -356,5 +358,20 @@
         }
       }
     })
+
+    // Render math expressions with KaTeX
+    if (window.katex) {
+      renderMathInElement(document.body, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      })
+    }
   })
 </script>
+
+<!-- KaTeX library for math rendering -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>

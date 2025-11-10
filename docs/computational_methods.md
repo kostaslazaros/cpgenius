@@ -82,9 +82,7 @@ Feature ranking using Recursive Feature Elimination with a Support Vector Machin
 
 </div>
 
-$$
-s_j^{(t)} = \lvert w_j^{(t)} \rvert
-$$
+$$s_j^{(t)} = \lvert w_j^{(t)} \rvert$$
 
 <div style="text-align: justify;">
 
@@ -92,13 +90,11 @@ where $w_j^{(t)}$ corresponds to the weight of feature j at iteration t. The fea
 
 </div>
 
-$$
-f(x) = w^{T} x + b
-$$
+$$f(x) = w^{T} x + b$$
 
 <div style="text-align: justify;">
 
-where $\mathbf{w} = [w_1, w_2, \ldots, w_p]$ denotes the weight vector and the bias term. The recursive nature of RFE ensures that only features maintaining high $\lvert w_j \rvert$ values across successive iterations are retained near the top of the ranking, capturing the most biologically relevant methylation markers for further analysis and interp retation.
+where $\mathbf{w} = [w_1, w_2, \ldots, w_p]$ denotes the weight vector and $b$ the bias term. The recursive nature of RFE ensures that only features maintaining high $\lvert w_j \rvert$ values across successive iterations are retained near the top of the ranking, capturing the most biologically relevant methylation markers for further analysis and interpretation.
 
 </div>
 
@@ -108,16 +104,7 @@ where $\mathbf{w} = [w_1, w_2, \ldots, w_p]$ denotes the weight vector and the b
 
 Feature ranking with Random Forest variable importance (Huang and Chen, 2021) relies on how much each CpG site contributes to improving class separation across an ensemble of decision trees. During training, each tree partitions the samples by selecting splits that reduce node impurity (e.g., Gini impurity). The importance of feature jin a given tree tis computed as the sum of impurity decreases produced by all splits on that feature, each weighted by the fraction of samples reaching the split:
 
-</div>
-
-$$
-\text{Imp}_j^{(t)}
-= \sum_{s \in S_j^{(t)}} p(s)\,\Delta_i(s),
-\quad\text{with}\quad
-\Delta_i(s) = i(\text{parent}) - i(\text{left}) - i(\text{right})
-$$
-
-<div style="text-align: justify;">
+$$ \text{Imp}_j^{(t)} = \sum_{s \in S_j^{(t)}} p(s)\,\Delta_i(s), \quad\text{with}\quad \Delta_i(s) = i(\text{parent}) - i(\text{left}) - i(\text{right}) $$
 
 where $S_j^{(t)}$ is the set of splits on feature j in tree t, p(s), is the proportion of training samples at the split, i and is the node impurity (for Gini, , $i(n) = 1 - \sum_k p_k(n)^2,\ \text{with } p_k(n)$ the class proportion at node ). The Random Forest importance is then obtained by averaging over trees and normalizing so that $\sum_j \text{Imp}_j = 1$. This yields a direct, model-based measure of how strongly each CpG site contributes to reducing classification uncertainty across the ensemble.
 
@@ -205,7 +192,8 @@ Feature importance is then derived from the fitted coefficients. For binary clas
 
 <div style="text-align: justify;">
 
-In all implemented feature selection methods, users are provided with the option to specify the number of top-ranked CpG sites to retain for downstream analysis. This flexibility allows the selection of an appropriate subset of features based on the user’s analytical goals or computational constraints. To facilitate the visual interpretation of CpG ranking results, dimensionality reduction is performed using Principal Component Analysis (PCA) ( Greenacre et al., 2022 ) . Two scatter plots are generated to illustrate the impact of feature selection on sample separation. The first plot is constructed using all available features, while the second utilizes only the top features chosen by the user. In both visualizations, each point represents a sample, and colors correspond to the target variable or class label. When feature selection effectively captures the most discriminative CpG sites, the resulting reduced representation tends to display distinct and well-defined clusters for each category, highlighting the enhanced separability achieved after ranking and selection. This visualization is implemented through the use of the matplotlib and seaborn python libraries.
+In all implemented feature selection methods, users are provided with the option to specify the number of top-ranked CpG sites to retain for downstream analysis. This flexibility allows the selection of an appropriate subset of features based on the user’s analytical goals or computational constraints. To facilitate the visual interpretation of CpG ranking results, dimensionality reduction is performed using Principal Component Analysis (PCA) ( Greenacre et al., 2022 ) . <br>
+Two scatter plots are generated to illustrate the impact of feature selection on sample separation. The first plot is constructed using all available features, while the second utilizes only the top features chosen by the user. In both visualizations, each point represents a sample, and colors correspond to the target variable or class label. When feature selection effectively captures the most discriminative CpG sites, the resulting reduced representation tends to display distinct and well-defined clusters for each category, highlighting the enhanced separability achieved after ranking and selection. This visualization is implemented through the use of the matplotlib and seaborn python libraries.
 
 </div>
 
@@ -225,7 +213,7 @@ Figure 2. Example of PCA visualization illustrating the effect of CpG feature se
 
 <div style="text-align: justify;">
 
-Differential methylation point (DMP) analysis is performed using the limma package (Adams et al., 2023) , which applies linear modeling to identify CpG sites exhibiting significant methylation differences between two user-defined biological conditions. The user specifies which two categories of the target or output variable to compare, such as disease states, treatment groups, or prognostic outcomes. The analysis uses a matrix of methylation β-values, from which a design matrix is constructed to represent the selected conditions. For each CpG site, a linear model is fitted to estimate the difference in average methylation (Δβ or deltaBeta ) between the two groups. A contrast matrix isolates the specific comparison of interest, and empirical Bayes moderation is applied to improve the precision of variance estimates and increase the reliability of differential detection, particularly when the number of samples is limited.
+Differential methylation point (DMP) analysis is performed using the limma package (Adams et al., 2023) , which applies linear modeling to identify CpG sites exhibiting significant methylation differences between two user-defined biological conditions. The user specifies which two categories of the target or output variable to compare, such as disease states, treatment groups, or prognostic outcomes. The analysis uses a matrix of methylation β-values, from which a design matrix is constructed to represent the selected conditions. For each CpG site, a linear model is fitted to estimate the difference in average methylation (Δβ or deltaBeta ) between the two groups. A contrast matrix isolates the specific comparison of interest, and empirical Bayes moderation is applied to improve the precision of variance estimates and increase the reliability of differential detection, particularly when the number of samples is limited. <br>
 
 The resulting statistics include both Δβ values and p -values for every CpG site, reflecting the magnitude and significance of methylation changes, respectively. Both thresholds are defined by the user, allowing customization of the analysis according to the desired stringency level. CpG sites with positive Δβ values exceeding the chosen threshold are classified as hypermethylated in the first condition, whereas those with negative Δβ values below the threshold are considered hypomethylated. By enabling user control over the compared conditions and statistical cutoffs, this approach provides flexibility and adaptability across diverse methylation studies.
 
@@ -235,7 +223,7 @@ The resulting statistics include both Δβ values and p -values for every CpG si
 
 <div style="text-align: justify;">
 
-Following DMP analysis, the results are visualized using a volcano plot to provide an overview of methylation differences between the selected conditions. Each point on the plot represents a CpG site, positioned according to its deltaBeta value on the x-axis and the negative logarithm of its p -value on the y-axis. This two-dimensional representation allows simultaneous evaluation of both the magnitude and statistical significance of methylation changes. CpG sites that exceed the user-defined Δβ and p -value thresholds are highlighted, with those exhibiting positive Δβ values classified as hypermethylated and those with negative Δβ values as hypomethylated. Dashed reference lines mark the applied thresholds, clearly separating significant from non-significant CpG sites. The plot also labels the most prominent differentially methylated positions, allowing rapid identification of candidate loci for downstream biological interpretation. Through this visualization, users can intuitively assess how the chosen thresholds influence the overall distribution of methylation changes and identify CpG sites that contribute most strongly to the observed differences between the compared biological conditions. This visualization is implemented through the ggplot2 and ggrepel R packages.
+Following DMP analysis, the results are visualized using a volcano plot to provide an overview of methylation differences between the selected conditions. Each point on the plot represents a CpG site, positioned according to its deltaBeta value on the x-axis and the negative logarithm of its p -value on the y-axis. This two-dimensional representation allows simultaneous evaluation of both the magnitude and statistical significance of methylation changes. CpG sites that exceed the user-defined Δβ and p -value thresholds are highlighted, with those exhibiting positive Δβ values classified as hypermethylated and those with negative Δβ values as hypomethylated. <br> Dashed reference lines mark the applied thresholds, clearly separating significant from non-significant CpG sites. The plot also labels the most prominent differentially methylated positions, allowing rapid identification of candidate loci for downstream biological interpretation. Through this visualization, users can intuitively assess how the chosen thresholds influence the overall distribution of methylation changes and identify CpG sites that contribute most strongly to the observed differences between the compared biological conditions. This visualization is implemented through the ggplot2 and ggrepel R packages.
 
 </div>
 
@@ -292,3 +280,4 @@ Greenacre, M., Groenen, P. J., Hastie, T., d’Enza, A. I., Markos, A., & Tuzhil
 Adams, C., Nair, N., Plant, D., Verstappen, S. M., Quach, H. L., Quach, D. L., Carvidi, A., Nititham, J., Nakamura, M., Graf, J., & Barton, A. (2023). Identification of cell-specific differential DNA methylation associated with methotrexate treatment response in rheumatoid arthritis. Arthritis & Rheumatology, 75(7), 1088–1097.
 
 </div>
+$$
