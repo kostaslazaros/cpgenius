@@ -23,9 +23,15 @@
 
 Preprocessing of Illumina methylation arrays in CpGene follows a structured and quality-controlled workflow based on the minfi framework, ensuring high data integrity and reproducibility before any downstream analysis. Raw IDAT files are imported alongside the sample sheet, which provides metadata and identifiers linking each array to its biological condition. Quality control begins with the computation of probe-level detection p -values, which quantify the confidence that measured intensities differ from background noise. The mean detection p -value across all probes is calculated for each sample, serving as an indicator of overall assay quality. Samples exceeding the established threshold are excluded, thereby eliminating low-confidence data that could bias subsequent analyses. Assay performance is further assessed using control probes designed to monitor bisulfite conversion efficiency across both color channels, as well as by examining global quality metrics that summarize intensity distributions per sample.
 
+<br>
+
 Once poor-quality samples are removed, normalization is applied through a control-probe–informed approach that corrects for between-array technical variability while preserving biological differences. This method begins with a background correction step that models non-specific fluorescence using a combined normal–exponential framework. Here, background noise is assumed to follow a normal distribution, while the true methylation signal is modeled as exponentially distributed. Out-of-bound probe data—fluorescence measured from the inactive color channel of Type I probes—provide an empirical estimate of background levels for each sample. By subtracting this modeled background, the resulting intensities more accurately represent the true methylation signal.
 
+<br>
+
 Following background correction, the workflow applies principal component analysis (PCA) to the control probe intensities to capture dominant sources of unwanted technical variation, such as batch or hybridization effects. The first principal components are then used to adjust probe intensities, effectively removing systematic technical noise while maintaining biological signal integrity. This combined background correction and PCA-based normalization strategy has demonstrated high performance in studies involving strong biological contrasts, such as comparisons between cancer and normal tissues or heterogeneous cell types. It ensures that the resulting β-values are technically consistent and biologically meaningful.
+
+<br>
 
 After normalization, several filtering steps are applied to retain only high-confidence CpG probes. Probes that fail the detection p-value threshold in any remaining sample are removed to eliminate unreliable measurements. Loci overlapping known single-nucleotide polymorphisms are excluded to prevent genotype-driven artifacts. Additionally, published catalogs of cross-reactive probes—those that hybridize to multiple genomic locations—are used to further refine the dataset. The remaining β-values are then examined to confirm their expected bimodal distribution, reflecting hypomethylated and hypermethylated states across samples. CpG sites that fall consistently within the intermediate hemi-methylated range (β-values between 0.3 and 0.6) are excluded, as they typically represent ambiguous methylation states and contribute limited discriminatory power to downstream analyses.
 
@@ -280,4 +286,3 @@ Greenacre, M., Groenen, P. J., Hastie, T., d’Enza, A. I., Markos, A., & Tuzhil
 Adams, C., Nair, N., Plant, D., Verstappen, S. M., Quach, H. L., Quach, D. L., Carvidi, A., Nititham, J., Nakamura, M., Graf, J., & Barton, A. (2023). Identification of cell-specific differential DNA methylation associated with methotrexate treatment response in rheumatoid arthritis. Arthritis & Rheumatology, 75(7), 1088–1097.
 
 </div>
-$$

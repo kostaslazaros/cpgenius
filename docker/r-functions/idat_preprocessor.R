@@ -26,14 +26,14 @@ detP <- detectionP(rgSet)
 
 # Groups & colors
 grp <- factor(targets$Prognosis)
-cols <- colorRampPalette(brewer.pal(8, "Dark2"))(nlevels(grp))
+cols <- colorRampPalette(brewer.pal(8, "Set3"))(nlevels(grp))
 
 # Mean detection p-values per sample
 m <- colMeans(detP, na.rm = TRUE)
 
 # --- Filter by threshold ---
 threshold <- max(0, mean(m) - 2 * sd(m))
-title_txt <- sprintf("Mean Detection PVal >= %.5f", threshold)
+title_txt <- sprintf("Mean Detection P-values", threshold)
 
 idx <- which(m >= threshold & !is.na(m))
 if (length(idx) == 0) stop("No samples meet the threshold.")
@@ -212,20 +212,19 @@ bVals <- getBeta(mSetSqFlt)
 bVals_df <- as.data.frame(bVals)
 
 # Groups & colors
-grp <- factor(targets$Prognosis)
-cols <- colorRampPalette(brewer.pal(8, "Dark2"))(nlevels(grp))
+grp2 <- factor(targets$Prognosis)
+cols2 <- colorRampPalette(brewer.pal(8, "Accent"))(nlevels(grp2))
 
 # Save at 300 dpi (7x5 inches -> 2100x1500 px)
 png("/output/beta_density.png", width = 7, height = 5, units = "in", res = DPI, bg="#f8fafc")
 par(mfrow = c(1, 1), mar = c(5, 4, 2, 1))
 densityPlot(bVals,
-  sampGroups = grp,
-  col = cols,
+  sampGroups = grp2,
+  col = cols2,
   main = "Density Plot",
-  legend = FALSE,
+  legend = TRUE,
   xlab = "BVals"
 )
-legend("top", legend = levels(grp), text.col = cols, bty = "n", bg="#f8fafc")
 dev.off()
 
 # Remove values that are either <= 0 or >=1 in
