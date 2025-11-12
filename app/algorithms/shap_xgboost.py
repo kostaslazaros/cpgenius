@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
-import shap
+
+# import shap  # not needed when using pred_contribs
 from pandas.api.types import is_numeric_dtype
-from xgboost import XGBClassifier
+from xgboost import DMatrix, XGBClassifier
 
 
 def shap_xgboost(
@@ -23,16 +24,15 @@ def shap_xgboost(
     shap_sample_size: int = 2000,
 ) -> pd.DataFrame:
     """
-    Train XGBoost, compute SHAP, and return a pandas DataFrame with a single
-    column 'Feature' listing ALL feature names ranked best → worst by mean
-    absolute SHAP (ties broken by XGBoost gain).
+    Train XGBoost, compute SHAP via XGBoost's native TreeSHAP (pred_contribs=True),
+    and return a pandas DataFrame with columns:
+      - 'Feature': feature name
+      - 'Importance': mean |SHAP| across samples (and classes if multiclass)
+    Ordered best → worst by SHAP, ties broken by XGBoost gain.
 
     Assumes:
       - df[label_col] is already encoded (ints 0..K-1)
       - feature columns are numeric
-
-    Returns:
-        pd.DataFrame: one column 'Feature' ordered best → worst.
     """
     if label_col not in df.columns:
         raise ValueError(f"Label column '{label_col}' not found.")
@@ -83,45 +83,30 @@ def shap_xgboost(
     else:
         X_shap = X
 
-    # Compute SHAP values
-    explainer = shap.TreeExplainer(model)
-    sv = explainer.shap_values(X_shap)
+    # ---- Compute SHAP via XGBoost's native TreeSHAP ----
+    booster = model.get_booster()
+    dmat = DMatrix(X_shap.values, feature_names=X.columns.tolist())
+    contribs = booster.predict(dmat, pred_contribs=True)
+    contribs = np.asarray(contribs)
 
-    # ---------- Normalize SHAP outputs to (n_samples, n_outputs, n_features) ----------
-    def _to_array(obj):
-        # Handle shap.Explanation or numpy
-        if hasattr(obj, "values"):  # shap.Explanation
-            return np.asarray(obj.values)
-        return np.asarray(obj)
-
-    if isinstance(sv, list):
-        # List of per-class arrays: each (n_samples, n_features)
-        arrs = [_to_array(a) for a in sv]
-        # Stack as outputs dimension -> (n_samples, n_outputs, n_features)
-        arr = np.stack(arrs, axis=1)
+    # Drop the last column = bias/base value and aggregate
+    if contribs.ndim == 2:
+        # (n_samples, n_features + 1)
+        shap_vals = contribs[:, :-1]
+        mean_abs_shap = np.mean(np.abs(shap_vals), axis=0)
+    elif contribs.ndim == 3:
+        # (n_samples, n_classes, n_features + 1)
+        shap_vals = contribs[..., :-1]
+        mean_abs_shap = np.mean(np.abs(shap_vals), axis=(0, 1))
     else:
-        arr = _to_array(sv)
-        if arr.ndim == 2:  # (n_samples, n_features)
-            arr = arr[:, None, :]  # add outputs dim
-        elif arr.ndim == 3:
-            # Expect (n_samples, n_outputs, n_features); some SHAP versions may give
-            # (n_samples, n_features, n_outputs). Detect and fix if needed.
-            n1, n2, n3 = arr.shape
-            if n2 == X.shape[1] and n3 != X.shape[1]:
-                # Looks like (n_samples, n_features, n_outputs) -> swap axes 1 and 2
-                arr = np.swapaxes(arr, 1, 2)
-        else:
-            raise RuntimeError(f"Unexpected SHAP values shape: {arr.shape}")
+        raise RuntimeError(f"Unexpected pred_contribs shape: {contribs.shape}")
 
-    # Now arr is (n_samples, n_outputs, n_features)
-    mean_abs_shap = np.mean(np.abs(arr), axis=(0, 1))  # -> (n_features,)
     if mean_abs_shap.shape[0] != X.shape[1]:
         raise RuntimeError(
             f"SHAP per-feature length mismatch: got {mean_abs_shap.shape[0]}, expected {X.shape[1]}"
         )
 
     # Gain vector aligned to columns (0 for features never used in splits)
-    booster = model.get_booster()
     fscore_gain = booster.get_score(importance_type="gain")  # dict: {name: gain}
     xgb_names = booster.feature_names or [f"f{i}" for i in range(X.shape[1])]
     if xgb_names == list(X.columns):
