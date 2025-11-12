@@ -12,5 +12,4 @@ workdir/
 # Virtual environments
 .venv
 *.log
-*.pkl
 .env

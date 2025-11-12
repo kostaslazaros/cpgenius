@@ -8,7 +8,7 @@ def lasso_lrc(
     df: pd.DataFrame,
     *,
     label_col: str = "Prognosis",
-    C: float = 0.5,
+    C: float = 10.0,
     max_iter: int = 8000,
     tol: float = 1e-3,
     class_weight: str = "balanced",
