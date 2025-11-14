@@ -1,5 +1,8 @@
 const BASE = 'https://maayanlab.cloud/Enrichr'
 
+console.log('=== Enrich.js Loading ===')
+console.log('Document ready state:', document.readyState)
+
 const els = {
   csv: document.getElementById('csvFile'),
   geneCol: document.getElementById('geneCol'),
@@ -14,9 +17,23 @@ const els = {
   sortSelect: document.getElementById('sortSelect'),
   downloadCsv: document.getElementById('downloadCsv'),
   geneCountContainer: document.getElementById('geneCountContainer'),
-  geneCountSlider: document.getElementById('geneCountSlider'),
-  geneCountDisplay: document.getElementById('geneCountDisplay'),
+  geneCountInput: document.getElementById('geneCountInput'),
   totalGenesDisplay: document.getElementById('totalGenesDisplay'),
+}
+
+console.log('DOM Elements loaded:')
+console.log('- csvFile:', !!els.csv)
+console.log('- geneCountContainer:', !!els.geneCountContainer)
+console.log('- geneCountInput:', !!els.geneCountInput)
+console.log('- totalGenesDisplay:', !!els.totalGenesDisplay)
+
+// Debug: check if geneCountInput exists
+if (!els.geneCountInput) {
+  console.error('ERROR: geneCountInput element not found in DOM')
+  console.error(
+    'Available elements with id containing "gene":',
+    Array.from(document.querySelectorAll('[id*="gene"]')).map((el) => el.id)
+  )
 }
 
 function showStatus(msg, type = 'info') {
@@ -232,7 +249,7 @@ function downloadCSV(rows) {
 
 let allGenes = []
 
-// Handle CSV file selection - extract genes and show slider
+// Handle CSV file selection - extract genes and show input field
 els.csv.addEventListener('change', async () => {
   if (!els.csv.files[0]) {
     els.geneCountContainer.classList.add('hidden')
@@ -245,17 +262,15 @@ els.csv.addEventListener('change', async () => {
     const file = els.csv.files[0]
     allGenes = await readCsvGetGenes(file, els.geneCol.value.trim())
 
-    // Update slider with total gene count and show it
+    // Update input field with total gene count and show it
     els.totalGenesDisplay.textContent = allGenes.length
-    els.geneCountSlider.max = allGenes.length
-    els.geneCountSlider.value = Math.min(allGenes.length, Math.max(5, Math.min(100, allGenes.length)))
-    els.geneCountDisplay.textContent = els.geneCountSlider.value
-    els.geneCountContainer.classList.remove('hidden')
+    if (els.geneCountInput) {
+      els.geneCountInput.setAttribute('max', allGenes.length)
+      els.geneCountInput.value = Math.min(allGenes.length, Math.max(5, Math.min(100, allGenes.length)))
+    }
+    // els.geneCountContainer.classList.remove('hidden')
 
-    showStatus(
-      `Found ${allGenes.length} genes. Use slider to select how many to use for enrichment.`,
-      'success'
-    )
+    showStatus(`Found ${allGenes.length} genes!! `, 'success')
   } catch (err) {
     console.error(err)
     showStatus(`Error reading CSV: ${err.message}`, 'error')
@@ -275,7 +290,7 @@ async function handleRun() {
     if (!allGenes.length) throw new Error('No genes found. Please select a valid CSV file.')
 
     // Use only the selected number of genes (first N genes)
-    const selectedGeneCount = parseInt(els.geneCountSlider.value)
+    const selectedGeneCount = els.geneCountInput ? parseInt(els.geneCountInput.value) : allGenes.length
     const genes = allGenes.slice(0, selectedGeneCount)
     // console.log('Using', genes.length, 'genes for enrichment.')
 
@@ -323,6 +338,19 @@ els.sortSelect.addEventListener('change', () => {
 els.downloadCsv.addEventListener('click', () => {
   if (lastRows.length) downloadCSV(lastRows)
 })
-els.geneCountSlider.addEventListener('input', () => {
-  els.geneCountDisplay.textContent = els.geneCountSlider.value
-})
+
+// Add input validation for the numeric input
+if (els.geneCountInput) {
+  els.geneCountInput.addEventListener('change', () => {
+    const value = parseInt(els.geneCountInput.value)
+    const max = parseInt(els.geneCountInput.max)
+    const min = parseInt(els.geneCountInput.min)
+
+    // Clamp value between min and max
+    if (value < min) {
+      els.geneCountInput.value = min
+    } else if (value > max) {
+      els.geneCountInput.value = max
+    }
+  })
+}

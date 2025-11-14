@@ -6,7 +6,7 @@
     {
       "label": "Fastapi server",
       "type": "shell",
-      "command": "uv run uvicorn app.start_fastapi:app --host 0.0.0.0 --port 8001 --reload",
+      "command": "uv run uvicorn app.start_fastapi:app --host 0.0.0.0 --port 8002 --reload",
       "group": {
         "kind": "build",
         "isDefault": true
